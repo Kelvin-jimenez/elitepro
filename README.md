@@ -53,6 +53,25 @@ Los porcentajes de la primera fila de Progreso usan las mismas fórmulas con 28 
 
 **Carga estimada** del entreno: sale del gasto calculado para esa sesión. Menos de 250 kcal, baja; de 250 a 499, media; 500 o más, alta. Es una regla orientativa propia de la app.
 
+## Cuenta en la nube (opcional)
+
+Por defecto los datos de cada persona se quedan en su navegador. Si en `src/nube.json` se pone la dirección de un servidor, la web añade en Perfil una cuenta en la nube y se generan dos páginas más: `panel.html` (para el entrenador) y `privacidad.html`.
+
+- El servidor es un script de Google (`nube/Code.gs`) dentro de una hoja de cálculo del Drive del responsable. Cómo montarlo: `nube/PUESTA-EN-MARCHA.md`.
+- Los datos se cifran en el dispositivo antes de enviarse. En la hoja solo quedan el correo, las fechas, el consentimiento y un bloque ilegible. Pueden descifrarlos el usuario, con su contraseña, y el responsable, con su contraseña de entrenador.
+- Las cuentas se crean con código de invitación. Los datos de salud solo se suben con un consentimiento aparte.
+- Obligaciones del responsable y textos legales: carpeta `legal/`.
+
+## Pruebas
+
+En `pruebas/`, con Node y Playwright:
+
+- `node pruebas/app.test.mjs index.html`: la app (61 comprobaciones).
+- `node pruebas/reloj.test.mjs index.html`: importación de archivos del reloj.
+- `node pruebas/api.test.mjs`: el servidor, con una imitación local de los servicios de Google.
+- `ELITEPRO_NUBE_URL=/api python3 build.py /tmp/ep/index.html && node pruebas/nube.test.mjs /tmp/ep`: cuenta en la nube de punta a punta (dos dispositivos y el panel).
+- `node pruebas/nube2.test.mjs /tmp/ep`: casos límite (guardados en curso, volver a entrar, empezar de cero, cambio de contraseña).
+
 ## Modo salud
 
 En Perfil se puede indicar diabetes o prediabetes, los límites que haya dado el médico y las lesiones o molestias. La app orienta; no sustituye a un médico, no calcula dosis ni cambia medicación.
