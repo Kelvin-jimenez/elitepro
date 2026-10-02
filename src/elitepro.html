@@ -1,10 +1,3 @@
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20150%20150%22%3E%3Crect%20width%3D%22150%22%20height%3D%22150%22%20rx%3D%2230%22%20fill%3D%22%2310161d%22/%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%2275%22%20r%3D%2252%22%20fill%3D%22none%22%20stroke%3D%22%232a323b%22%20stroke-width%3D%2211%22/%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%2275%22%20r%3D%2252%22%20fill%3D%22none%22%20stroke%3D%22%23ffd400%22%20stroke-width%3D%2211%22%20stroke-linecap%3D%22round%22%20stroke-dasharray%3D%22245%20327%22%20transform%3D%22rotate%28-90%2075%2075%29%22/%3E%3Crect%20x%3D%2255%22%20y%3D%2250%22%20width%3D%229%22%20height%3D%2250%22%20fill%3D%22%23fff%22/%3E%3Crect%20x%3D%2264%22%20y%3D%2250%22%20width%3D%2232%22%20height%3D%2210%22%20fill%3D%22%233987e5%22/%3E%3Crect%20x%3D%2264%22%20y%3D%2270%22%20width%3D%2223%22%20height%3D%2210%22%20fill%3D%22%23eb6834%22/%3E%3Crect%20x%3D%2264%22%20y%3D%2290%22%20width%3D%2232%22%20height%3D%2210%22%20fill%3D%22%231baf7a%22/%3E%3C/svg%3E">
-<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Elitepro</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
 <style>
@@ -192,8 +185,6 @@ th{color:var(--muted);font-weight:600}
 @media (prefers-reduced-motion:no-preference){.meter i{transition:width .25s ease}}
 </style>
 
-</head>
-<body>
 <div class="app">
   <header class="top">
     <div class="brand"><svg class="logo" viewBox="0 0 150 150" role="img" aria-label="Símbolo de Elitepro"><rect width="150" height="150" rx="30" fill="#10161d"/><circle cx="75" cy="75" r="52" fill="none" stroke="#2a323b" stroke-width="11"/><circle cx="75" cy="75" r="52" fill="none" stroke="#ffd400" stroke-width="11" stroke-linecap="round" stroke-dasharray="245 327" transform="rotate(-90 75 75)"/><rect x="55" y="50" width="9" height="50" fill="#fff"/><rect x="64" y="50" width="32" height="10" fill="#3987e5"/><rect x="64" y="70" width="23" height="10" fill="#eb6834"/><rect x="64" y="90" width="32" height="10" fill="#1baf7a"/></svg>Elitepro</div>
@@ -248,7 +239,7 @@ th{color:var(--muted);font-weight:600}
             </details>
             <hr class="rule thin">
             <form id="w-form" class="row" autocomplete="off">
-              <label class="fld">Peso de este día (kg)<input id="w-val" type="text" inputmode="decimal" placeholder="70,0"></label>
+              <label class="fld">Peso de este día (kg)<input id="w-val" type="text" inputmode="decimal" placeholder="73,0"></label>
               <button class="btn ghost" type="submit">Guardar peso</button>
             </form>
           </div>
@@ -377,7 +368,7 @@ th{color:var(--muted);font-weight:600}
         </div>
         <div class="row">
           <label class="fld">Sexo<select id="p-sex"><option value="m">Hombre</option><option value="f">Mujer</option></select></label>
-          <label class="fld">Edad<input id="p-age" type="text" inputmode="numeric" placeholder="30"></label>
+          <label class="fld">Edad<input id="p-age" type="text" inputmode="numeric" placeholder="35"></label>
           <label class="fld">Altura (cm)<input id="p-height" type="text" inputmode="decimal" placeholder="170"></label>
           <label class="fld">Peso (kg)<input id="p-weight" type="text" inputmode="decimal" placeholder="70"></label>
         </div>
@@ -478,15 +469,6 @@ th{color:var(--muted);font-weight:600}
       <div class="row">
         <button class="btn" type="submit">Guardar mis datos</button>
         <p id="p-msg" class="msg" aria-live="polite"></p>
-      </div>
-      <div class="card">
-        <div class="eyebrow">Copia de seguridad</div>
-        <hr class="rule">
-        <p class="sub">Tus datos viven en este navegador. Si borras sus datos o cambias de navegador, se pierden: guarda una copia.</p>
-        <div class="row">
-          <button class="btn ghost" type="button" id="bk-out">Descargar copia</button>
-          <span class="btn ghost fileb">Recuperar copia<input id="bk-in" type="file" accept=".json,application/json" aria-label="Archivo de copia"></span>
-        </div>
       </div>
       <div class="card">
         <div class="eyebrow">Empezar de cero</div>
@@ -1128,7 +1110,7 @@ async function estimateMeal(file) {
   if (sample && canImg) return;
   e.preventDefault();
   const m = $(sel === "#f-photo" ? "#f-msg" : "#a-msg");
-  m.textContent = sample ? "En esta vista no se pueden enviar fotos. Escríbelo y pulsa Calcular con IA." : "Esta versión no lee fotos. Apúntalo a mano o elige de la lista.";
+  m.textContent = sample ? "En esta vista no se pueden enviar fotos. Escríbelo y pulsa Calcular con IA." : "Leer fotos solo funciona en la app publicada, abierta dentro de Claude. Aquí apúntalo a mano o elige de la lista.";
   m.className = "msg err";
 }));
 $("#f-ai").addEventListener("click", () => estimateMeal(null));
@@ -1238,26 +1220,6 @@ $("#ev-form").addEventListener("submit", e => {
   saveProfile(p);
 });
 
-/* ---------- Copia de seguridad (solo sin sesión) ---------- */
-$("#bk-out").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify({ app: "platoypista", profile: S.profile, days: S.days }, null, 1)], { type: "application/json" });
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "elitepro-" + today() + ".json";
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-});
-$("#bk-in").addEventListener("change", e => {
-  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
-  const rd = new FileReader();
-  rd.onload = () => {
-    try {
-      const raw = JSON.parse(String(rd.result)), p = normProfile(raw.profile);
-      if (raw.app !== "platoypista" || !p) throw new Error("formato");
-      const days = {}; Object.keys(raw.days || {}).forEach(k => { days[k] = normDay(raw.days[k], k); });
-      S.profile = p; S.days = days; profDirty = false; saveLocal(); render(); toast("Copia recuperada.");
-    } catch (err) { toast("Ese archivo no es una copia de Elitepro."); }
-  };
-  rd.readAsText(f);
-});
-
 /* ---------- Empezar de cero ---------- */
 $("#p-week").addEventListener("change", e => {
   const m = (e.target.id || "").match(/^pw-t-(\d)$/); if (!m) return;
@@ -1352,7 +1314,7 @@ async function boot() {
   if (sample) { try { const caps = await sample.limits(); canImg = !!(caps && caps.images); } catch (e) { canImg = false; } }
   showAi();
   let id = null; try { id = user ? await user.id() : null; } catch (e) { id = null; }
-  if (!db || !id) return goLocal("Lo que apuntes se guarda solo en este navegador. Descarga una copia de vez en cuando desde Datos.");
+  if (!db || !id) return goLocal("Estás sin sesión: lo que apuntes se guarda solo en este navegador.");
   profRef = db.doc("data/users/" + id + "/profile"); daysCol = profRef.collection("days");
   const ready = () => {
     if (S.got.p && S.got.d && S.mode === "loading") {
@@ -1376,6 +1338,3 @@ async function boot() {
 boot();
 })();
 </script>
-
-</body>
-</html>
