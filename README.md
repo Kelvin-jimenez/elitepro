@@ -15,9 +15,34 @@ Todo está en un único archivo, `index.html`. Los datos de cada persona se guar
 - `build.py`: genera `index.html`, la versión web, a partir de la fuente. Se ejecuta con `python3 build.py`.
 - `index.html`: lo que sirve la web. No se edita a mano.
 
+- `src/elitepro.fase1.html`: copia de seguridad de la fuente antes del rediseño de panel (fase 2).
+
+## Pantallas
+
+- **Hoy**: panel con el objetivo del día (anillo de progreso), macros, entreno, comidas por momento, lo que falta y el peso. No hay formularios a la vista.
+- **Semana**: tira L–D con indicadores, resumen semanal y una tarjeta por día con su estado.
+- **Progreso**: métricas, Elite Score y gráficas de peso, calorías, proteína, entrenos, distancia y pulso.
+- **Competiciones**: cuenta atrás de la prueba objetivo y calendario de pruebas.
+- **Perfil**: datos, plan semanal, salud, lesiones, personas y copia de seguridad.
+
+Los formularios (comida, entreno, peso, glucosa, competición, entreno previsto) se abren en una hoja: desde abajo en móvil, centrada en escritorio. En móvil el botón `+` de la barra inferior abre el menú rápido.
+
+## Elite Score
+
+Índice interno de cumplimiento de 0 a 100 sobre los últimos 7 días. No es una valoración médica. Es la media de los componentes que tengan datos:
+
+- **Entrenamiento** = días con entreno previsto en los que se registró un entreno ÷ días con entreno previsto × 100.
+- **Nutrición** = media, entre los días con comidas apuntadas, de `0,6 × calorías + 0,4 × proteína`. Calorías vale 100 si lo comido queda a ±10 % del objetivo del día y baja de forma lineal hasta 0 al ±40 %. Proteína es el porcentaje del objetivo alcanzado, con tope en 100.
+- **Constancia** = días con algún registro (comida, entreno, peso o glucosa) ÷ 7 × 100.
+- **Recuperación**: no se calcula. La app no recoge sueño ni descanso, así que no entra en la media.
+
+Los porcentajes de la primera fila de Progreso usan las mismas fórmulas con 28 días (entrenamientos) y 14 días (nutrición).
+
+**Carga estimada** del entreno: sale del gasto calculado para esa sesión. Menos de 250 kcal, baja; de 250 a 499, media; 500 o más, alta. Es una regla orientativa propia de la app.
+
 ## Modo salud
 
-En Datos se puede indicar diabetes o prediabetes, los límites que haya dado el médico y las lesiones o molestias. La app orienta; no sustituye a un médico, no calcula dosis ni cambia medicación.
+En Perfil se puede indicar diabetes o prediabetes, los límites que haya dado el médico y las lesiones o molestias. La app orienta; no sustituye a un médico, no calcula dosis ni cambia medicación.
 
 ## Diseño
 
