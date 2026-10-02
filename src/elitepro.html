@@ -242,6 +242,11 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
 .choice:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--mark) 65%,var(--line))}
 .choice.main,#sh-meal:not(.noai) .c-photo,#sh-meal.noai #f-manual{background:var(--btn);color:var(--on-btn);border-color:var(--btn)}
 .choice{flex-direction:column;gap:2px}
+[hidden]{display:none!important}
+#a-extra{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.choice .hint{font-size:.72rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
+.how summary{cursor:pointer;font-size:.86rem;font-weight:600;color:var(--ink-2)}
+.how p{padding-top:8px}
 .choice .only{display:none;font-size:.72rem;font-weight:600;color:var(--muted);letter-spacing:.01em}
 #sh-meal.noai .only{display:block}
 #sh-meal.noai .c-photo>span,#sh-meal.noai #f-ai>span{color:var(--muted)}
@@ -624,15 +629,16 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
 <dialog class="sheet" id="sh-act" aria-labelledby="sh-act-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-act-t">Registrar entreno</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div class="choices">
-    <span class="choice fileb">Importar GPX<input id="a-gpx" type="file" accept=".gpx,application/gpx+xml" aria-label="Archivo GPX"></span>
+    <span class="choice fileb"><span>Importar del reloj</span><small class="hint">Garmin, Polar, Coros, Strava</small><input id="a-gpx" type="file" aria-label="Archivo de la actividad: FIT, TCX, GPX o el ZIP de Garmin Connect"></span>
     <span class="choice fileb">Leer captura de Strava<input id="a-shot" type="file" accept="image/*" aria-label="Captura de Strava"></span>
   </div>
+  <details class="how"><summary>Cómo sacar el archivo de Garmin</summary><p class="sub">En Garmin Connect, desde el navegador (connect.garmin.com): abre la actividad, pulsa la rueda dentada y elige «Exportar original», «Exportar a TCX» o «Exportar a GPX». Sube aquí ese archivo tal cual, también si es un .zip. Trae duración, pulso medio y calorías; la distancia, solo si la actividad la tiene.</p></details>
   <form id="act-form" autocomplete="off">
     <div class="row">
       <label class="fld wide">Tipo<select id="a-type"></select></label>
       <label class="fld">Minutos<input id="a-min" type="text" inputmode="decimal" placeholder="45"></label>
     </div>
-    <div class="three">
+    <div class="three" id="a-extra">
       <label class="fld">Distancia (km)<input id="a-km" type="text" inputmode="decimal" placeholder="8,2"></label>
       <label class="fld">Pulso medio (ppm)<input id="a-hr" type="text" inputmode="numeric" placeholder="148"></label>
       <label class="fld">Kcal del reloj<input id="a-kcal" type="text" inputmode="decimal" placeholder="si las da"></label>
@@ -1053,16 +1059,16 @@ function rHoy() {
       : `<dl class="kv"><div><dt>Duración</dt><dd class="num">${nf(s.min)} <small>min</small></dd></div><div><dt>Carga estimada</dt><dd>${load}</dd></div><div><dt>Gasto previsto</dt><dd class="num">${nf(actKcal({ type: s.type, min: s.min }, w))} <small>kcal</small></dd></div></dl>`}
     ${s.unset ? "" : injHtml(s.type)}
     ${dm && hl.hypo && !s.unset && s.type !== "descanso" && isToday && !((day.glu || []).some(x => x.when === "pre_entreno")) ? `<p class="sub">Con tu tratamiento, mide la glucosa antes y después de entrenar y lleva hidratos rápidos encima.</p>` : ""}
-    ${askRun ? `<p class="ask">¿Has salido ya? Registra distancia y tiempo${canImg ? ", pasa la captura de Strava" : ""} o importa el GPX, y recalculo lo que te toca comer.</p>` : ""}
+    ${askRun ? `<p class="ask">¿Has salido ya? Registra distancia y tiempo${canImg ? ", pasa la captura de Strava" : ""} o importa el archivo del reloj, y recalculo lo que te toca comer.</p>` : ""}
     ${acts.length ? `<ul class="acts">${acts.map(a => `<li>
         <span><b>${esc((TYPES[a.type] || {}).n || a.type)}</b>${a.title ? " · " + esc(a.title) : ""}</span>
         <span class="num">${nf(actKcal(a, w))} kcal</span>
         <button class="icon-btn" type="button" data-del-act="${esc(a.id)}" aria-label="Borrar entreno">×</button>
-        <small class="num">${[a.km > 0 ? nf(a.km, 2) + " km" : "", a.min > 0 ? nf(a.min) + "′" : "", pace(a), a.hr > 0 ? nf(a.hr) + " ppm" : "", a.src === "strava" ? "de Strava" : a.src === "gpx" ? "de GPX" : ""].filter(Boolean).join(" · ")}</small>
+        <small class="num">${[a.km > 0 ? nf(a.km, 2) + " km" : "", a.min > 0 ? nf(a.min) + "′" : "", pace(a), a.hr > 0 ? nf(a.hr) + " ppm" : "", a.src === "strava" ? "de Strava" : a.src === "gpx" ? "de GPX" : a.src === "reloj" ? "del reloj" : ""].filter(Boolean).join(" · ")}</small>
       </li>`).join("")}</ul>` : ""}
     <div class="row actions">
       <button class="btn" type="button" data-sheet="act">Registrar entreno</button>
-      <button class="btn ghost" type="button" data-gpx="1">Importar GPX</button>
+      <button class="btn ghost" type="button" data-gpx="1">Importar del reloj</button>
       <button class="btn ghost" type="button" data-sheet="plan" data-date="${d}">${s.unset ? "Elegir entreno" : "Cambiar previsto"}</button>
     </div>`;
 
@@ -1565,6 +1571,7 @@ function fillAct(a) {
   $("#a-type").value = a.type; const s = v => v > 0 ? String(Math.round(v * 100) / 100).replace(".", ",") : "";
   $("#a-min").value = s(a.min); $("#a-km").value = s(a.km); $("#a-hr").value = a.hr > 0 ? String(Math.round(a.hr)) : ""; $("#a-kcal").value = a.kcal > 0 ? String(Math.round(a.kcal)) : "";
   actDraft = { src: a.src || "manual", title: a.title || "" };
+  actFields(true);
 }
 $("#act-form").addEventListener("submit", e => {
   e.preventDefault();
@@ -1576,8 +1583,103 @@ $("#act-form").addEventListener("submit", e => {
   msg.textContent = ""; msg.className = "msg";
   saveDay(d); closeSheets(); toast("Entreno guardado. He recalculado lo que te toca comer.");
 });
+/* ---------- Archivos del reloj: FIT, TCX y el ZIP de Garmin Connect (el GPX sigue con su lector de siempre) ---------- */
+/* La distancia solo se pide en los deportes que la tienen; en fuerza, crossfit, etc. se esconde */
+function actFields(keep) {
+  const lb = $("#a-km").closest("label"), dist = !!(TYPES[$("#a-type").value] || {}).dist;
+  lb.hidden = !dist && !(keep && num($("#a-km").value) > 0);
+  if (lb.hidden) $("#a-km").value = "";
+}
+$("#a-type").addEventListener("change", () => actFields(false));
+function plannedOr(fallback) { const s = planned(S.date); return !s.unset && s.type !== "descanso" ? s.type : fallback; }
+function parseTcx(text) {
+  const doc = new DOMParser().parseFromString(text, "application/xml"), act = doc.getElementsByTagName("Activity")[0];
+  if (!act) throw new Error("sin actividad");
+  const kid = (el, tag) => [...el.children].find(c => c.localName === tag), val = (el, tag) => { const n = kid(el, tag); return n ? parseFloat(n.textContent) : NaN; };
+  let sec = 0, m = 0, kcal = 0, hrW = 0, hrT = 0;
+  [...act.getElementsByTagName("Lap")].forEach(l => {
+    const s = val(l, "TotalTimeSeconds"), d = val(l, "DistanceMeters"), k = val(l, "Calories"), h = kid(l, "AverageHeartRateBpm"), hv = h ? parseFloat(h.textContent) : NaN;
+    if (s > 0) sec += s; if (d > 0) m += d; if (k > 0) kcal += k;
+    if (hv > 30 && hv < 240) { const w = s > 0 ? s : 1; hrW += hv * w; hrT += w; }
+  });
+  let hr = hrT ? hrW / hrT : 0;
+  if (!hr) { const hs = [...act.getElementsByTagName("HeartRateBpm")].map(n => parseFloat(n.textContent)).filter(v => v > 30 && v < 240); if (hs.length) hr = hs.reduce((a, b) => a + b, 0) / hs.length; }
+  const sport = act.getAttribute("Sport") || "", id = kid(act, "Id");
+  return { type: /run/i.test(sport) ? "carrera" : /bik|cycl/i.test(sport) ? "bici" : plannedOr("otro"), km: m / 1000, min: sec / 60, kcal, hr, t0: id ? Date.parse(id.textContent) : NaN };
+}
+function parseFit(buf) {
+  const dv = new DataView(buf), hs = dv.getUint8(0), end = Math.min(buf.byteLength, hs + dv.getUint32(4, true)), defs = {}, ses = [];
+  let o = hs;
+  while (o < end) {
+    const h = dv.getUint8(o++);
+    if (!(h & 0x80) && (h & 0x40)) { // mensaje de definición
+      const le = dv.getUint8(o + 1) === 0, g = dv.getUint16(o + 2, le), n = dv.getUint8(o + 4), fields = []; let size = 0; o += 5;
+      for (let i = 0; i < n; i++, o += 3) { fields.push([dv.getUint8(o), dv.getUint8(o + 1), size]); size += dv.getUint8(o + 1); }
+      if (h & 0x20) { const nd = dv.getUint8(o++); for (let i = 0; i < nd; i++, o += 3) size += dv.getUint8(o + 1); }
+      defs[h & 0x0F] = { g, le, fields, size };
+    } else { // mensaje de datos
+      const d = defs[(h & 0x80) ? (h >> 5) & 3 : h & 0x0F]; if (!d) throw new Error("FIT dañado");
+      if (d.g === 18 && o + d.size <= buf.byteLength) { // resumen de la sesión
+        const r = {};
+        d.fields.forEach(([fn, sz, off]) => { const p = o + off, v = sz === 1 ? dv.getUint8(p) : sz === 2 ? dv.getUint16(p, d.le) : sz === 4 ? dv.getUint32(p, d.le) : null; r[fn] = v === (sz === 1 ? 0xFF : sz === 2 ? 0xFFFF : 0xFFFFFFFF) ? null : v; });
+        ses.push(r);
+      }
+      o += d.size;
+    }
+  }
+  if (!ses.length) throw new Error("FIT sin resumen");
+  let sec = 0, m = 0, kcal = 0, hrW = 0, hrT = 0;
+  ses.forEach(r => { const s = (r[8] != null ? r[8] : r[7] || 0) / 1000; sec += s; m += (r[9] || 0) / 100; kcal += r[11] || 0; if (r[16] > 30 && r[16] < 240) { const w = s > 0 ? s : 1; hrW += r[16] * w; hrT += w; } });
+  const sp = ses[0][5], sub = ses[0][6], t0 = ses[0][2] != null ? (ses[0][2] + 631065600) * 1000 : NaN;
+  const type = sub === 20 ? "fuerza" : [19, 43, 44].includes(sub) ? "movilidad" : sp === 62 || [70, 73, 74, 75].includes(sub) ? "crossfit" : sub === 26 ? "funcional"
+    : sp === 1 ? "carrera" : sp === 2 || sp === 21 ? "bici" : sp === 5 ? "natacion" : sp === 30 ? "patines" : plannedOr("otro");
+  return { type, km: m / 1000, min: sec / 60, kcal, hr: hrT ? hrW / hrT : 0, t0 };
+}
+async function unzipActivity(buf) {
+  const dv = new DataView(buf); let e = buf.byteLength - 22;
+  while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error("zip dañado");
+  let o = dv.getUint32(e + 16, true), pick = null;
+  for (let i = dv.getUint16(e + 10, true); i > 0 && !pick && dv.getUint32(o, true) === 0x02014b50; i--) {
+    const nl = dv.getUint16(o + 28, true), name = new TextDecoder().decode(new Uint8Array(buf, o + 46, nl));
+    if (/\.(fit|tcx|gpx)$/i.test(name)) pick = { method: dv.getUint16(o + 10, true), size: dv.getUint32(o + 20, true), off: dv.getUint32(o + 42, true) };
+    o += 46 + nl + dv.getUint16(o + 30, true) + dv.getUint16(o + 32, true);
+  }
+  if (!pick) throw new Error("zip sin actividad");
+  const st = pick.off + 30 + dv.getUint16(pick.off + 26, true) + dv.getUint16(pick.off + 28, true), raw = buf.slice(st, st + pick.size);
+  if (pick.method === 0) return raw;
+  if (pick.method !== 8 || typeof DecompressionStream === "undefined") throw new Error("zip no compatible");
+  return new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer();
+}
+async function importWatch(file) {
+  const msg = $("#a-msg");
+  try {
+    let buf = await file.arrayBuffer(), u = new Uint8Array(buf);
+    if (u[0] === 0x50 && u[1] === 0x4B) { buf = await unzipActivity(buf); u = new Uint8Array(buf); }
+    let a;
+    if (u.length > 14 && u[8] === 0x2E && u[9] === 0x46 && u[10] === 0x49 && u[11] === 0x54) a = parseFit(buf);
+    else {
+      const text = new TextDecoder().decode(u);
+      if (/<gpx[\s>]/i.test(text)) { // un GPX con otro nombre o dentro de un zip: lo lee el lector de GPX
+        const dt = new DataTransfer(), inp = $("#a-gpx"); dt.items.add(new File([u], "actividad.gpx")); inp.files = dt.files; inp.dispatchEvent(new Event("change")); return;
+      }
+      if (!/<TrainingCenterDatabase[\s>]/.test(text)) throw new Error("formato");
+      a = parseTcx(text);
+    }
+    if (!(a.min > 0) && !(a.km > 0) && !(a.kcal > 0)) throw new Error("vacío");
+    fillAct({ type: a.type, km: a.km, min: a.min, kcal: a.kcal, hr: a.hr, title: "", src: "reloj" });
+    const day = Number.isFinite(a.t0) ? ymd(new Date(a.t0)) : "";
+    msg.textContent = "Actividad leída: " + [a.min > 0 ? nf(a.min) + "′" : "", a.km > 0 ? nf(a.km, 2) + " km" : "", a.hr > 0 ? "pulso medio " + nf(a.hr) + " ppm" : "", a.kcal > 0 ? nf(a.kcal) + " kcal del reloj" : ""].filter(Boolean).join(", ")
+      + (day && day !== S.date ? ". Ojo: esa actividad es del " + shortDate(day) + " y estás en otro día" : "") + ". Revisa el tipo y pulsa Guardar entreno.";
+    msg.className = "msg";
+  } catch (err) {
+    msg.textContent = /zip no compatible/.test(String(err && err.message)) ? "Este navegador no abre el .zip: descomprímelo y sube el archivo .fit que lleva dentro." : "No he podido leer ese archivo. Vale un .fit, un .tcx, un .gpx o el .zip que descarga Garmin Connect.";
+    msg.className = "msg err";
+  }
+}
 $("#a-gpx").addEventListener("change", e => {
   const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  if (!/\.gpx$/i.test(f.name || "")) { importWatch(f); return; }
   const msg = $("#a-msg"), rd = new FileReader();
   rd.onerror = () => { msg.textContent = "No se ha podido leer el archivo."; msg.className = "msg err"; };
   rd.onload = () => {
@@ -1684,7 +1786,7 @@ document.addEventListener("click", e => {
     if (t.dataset.quick && n !== "ev" && S.tab !== "hoy") { S.date = today(); location.hash = "#hoy"; render(); }
     if (n === "meal") return openMeal(t.dataset.editMeal || null);
     if (n === "plan") planSheet(t.dataset.date || S.date);
-    if (n === "act") { $("#a-msg").textContent = ""; $("#a-msg").className = "msg"; }
+    if (n === "act") { $("#a-msg").textContent = ""; $("#a-msg").className = "msg"; if (!["#a-min", "#a-km", "#a-kcal", "#a-hr"].some(i => $(i).value)) $("#a-type").value = plannedOr($("#a-type").value); actFields(true); }
     openSheet(n);
     if (t.dataset.gpx) $("#a-gpx").click();
     return;

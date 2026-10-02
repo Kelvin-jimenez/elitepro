@@ -4,7 +4,7 @@ App de control diario de entreno y nutrición para quien entrena híbrido, cross
 
 - Calcula las calorías y los macros de cada día según el entreno que toque.
 - Dice qué te falta por comer con lo que ya has apuntado.
-- Registra comidas, entrenos (con distancia, pulso y GPX), peso y competiciones.
+- Registra comidas, entrenos (a mano o con el archivo del reloj), peso y competiciones.
 - Planificación semana a semana, día a día o con una semana fija.
 
 Todo está en un único archivo, `index.html`. Los datos de cada persona se guardan solo en su navegador.
@@ -26,6 +26,19 @@ Todo está en un único archivo, `index.html`. Los datos de cada persona se guar
 - **Perfil**: datos, plan semanal, salud, lesiones, personas y copia de seguridad.
 
 Los formularios (comida, entreno, peso, glucosa, competición, entreno previsto) se abren en una hoja: desde abajo en móvil, centrada en escritorio. En móvil el botón `+` de la barra inferior abre el menú rápido.
+
+## Entrenos desde el reloj
+
+«Importar del reloj» lee el archivo de la actividad y rellena el formulario para revisarlo antes de guardar:
+
+- `.fit` (el original de Garmin y de casi todos los relojes): deporte, duración, distancia, pulso medio y calorías, del resumen de la sesión.
+- `.tcx`: lo mismo, sumando las vueltas.
+- `.gpx`: recorrido, tiempo y pulso (no trae calorías).
+- `.zip`: el que descarga Garmin Connect con «Exportar original»; se abre y se lee el archivo que lleva dentro.
+
+En Garmin Connect se exporta desde el navegador: actividad → rueda dentada → Exportar. No hay conexión directa con la cuenta de Garmin: su API solo se da a empresas aprobadas y necesita un servidor, y esta app es una página sin servidor.
+
+La distancia solo se pide en los deportes que la tienen (carrera, series, híbrido, bici, patines, competición). En fuerza, crossfit, funcional, combate, natación o movilidad el campo no aparece.
 
 ## Elite Score
 
