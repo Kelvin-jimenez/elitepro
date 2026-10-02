@@ -56,6 +56,9 @@ button,input,select{font:inherit;color:inherit}
 .brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;font-size:1.5rem;letter-spacing:.01em;text-transform:uppercase;padding-bottom:10px}
 .logo{width:38px;height:38px;flex:0 0 auto;border-radius:8px;outline:1px solid var(--line)}
 .bib{background:var(--mark);color:var(--on-mark);font-size:1rem;padding:2px 8px;border-radius:3px;letter-spacing:.04em}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.who{padding-bottom:10px}
+.who select{min-height:36px;width:auto;max-width:190px;padding:4px 8px;font-weight:600}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto;max-width:100%}
 .tabs a{font-family:var(--f-display);font-weight:600;font-size:1.15rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-decoration:none;padding:6px 12px 10px;border-bottom:4px solid transparent;margin-bottom:-3px;white-space:nowrap}
 .tabs a:hover{color:var(--ink)}
@@ -190,6 +193,7 @@ th{color:var(--muted);font-weight:600}
 <div class="app">
   <header class="top">
     <div class="brand"><svg class="logo" viewBox="0 0 150 150" role="img" aria-label="Símbolo de Elitepro"><rect width="150" height="150" rx="30" fill="#10161d"/><circle cx="75" cy="75" r="52" fill="none" stroke="#2a323b" stroke-width="11"/><circle cx="75" cy="75" r="52" fill="none" stroke="#ffd400" stroke-width="11" stroke-linecap="round" stroke-dasharray="245 327" transform="rotate(-90 75 75)"/><rect x="55" y="50" width="9" height="50" fill="#fff"/><rect x="64" y="50" width="32" height="10" fill="#3987e5"/><rect x="64" y="70" width="23" height="10" fill="#eb6834"/><rect x="64" y="90" width="32" height="10" fill="#1baf7a"/></svg>Elitepro</div>
+    <label id="who-wrap" class="who" hidden><span class="sr">Quién usa la app</span><select id="who"></select></label>
     <nav class="tabs" aria-label="Secciones">
       <a href="#hoy" data-tab="hoy">Hoy</a>
       <a href="#semana" data-tab="semana">Semana</a>
@@ -409,7 +413,7 @@ th{color:var(--muted);font-weight:600}
       <div class="card">
         <div class="eyebrow">Empezar de cero</div>
         <hr class="rule">
-        <p class="sub">Borra tus datos, comidas, entrenos y pruebas para volver a empezar.</p>
+        <p class="sub">Borra los datos, comidas, entrenos y pruebas de la persona que está usando la app ahora.</p>
         <div class="row">
           <button class="btn ghost" type="button" id="rs-ask">Borrar todo</button>
           <span id="rs-confirm" class="row" hidden><span class="msg err">¿Seguro? No se puede deshacer.</span><button class="btn" type="button" id="rs-yes">Sí, borrar todo</button><button class="btn ghost" type="button" id="rs-no">Cancelar</button></span>
@@ -513,7 +517,34 @@ async function drain(key, ref) {
   while (w.next) { const d = w.next; w.next = null; try { await ref.set(d); } catch (e) { writeFail(e); } }
   w.busy = false;
 }
-function saveLocal() { try { localStorage.setItem(LS, JSON.stringify({ profile: S.profile, days: S.days })); } catch (e) { /* solo memoria */ } }
+const UKEY = "elitepro:users";
+let users = { current: "", list: [] };
+const dataKey = () => LS + ":u:" + users.current;
+function saveUsers() { try { localStorage.setItem(UKEY, JSON.stringify(users)); } catch (e) { /* solo memoria */ } }
+function loadUsers() {
+  try { users = JSON.parse(localStorage.getItem(UKEY) || "null") || { current: "", list: [] }; } catch (e) { users = { current: "", list: [] }; }
+  if (!Array.isArray(users.list)) users = { current: "", list: [] };
+  if (!users.list.length) { // primera vez: lo que hubiera guardado pasa a ser la primera persona
+    const id = uidGen(); users = { current: id, list: [{ id, name: "" }] };
+    try { const old = localStorage.getItem(LS); if (old) { localStorage.setItem(LS + ":u:" + id, old); localStorage.removeItem(LS); const o = JSON.parse(old); users.list[0].name = (o.profile && o.profile.name) || ""; } } catch (e) { /* sin datos previos */ }
+    saveUsers();
+  }
+  if (!users.list.some(u => u.id === users.current)) users.current = users.list[0].id;
+}
+function loadUserData() {
+  S.profile = null; S.days = {};
+  try { const raw = JSON.parse(localStorage.getItem(dataKey()) || "null"); if (raw) { S.profile = normProfile(raw.profile); S.days = raw.days || {}; } } catch (e) { /* vacío */ }
+}
+function renderWho() {
+  const w = $("#who-wrap"); w.hidden = S.mode !== "local"; if (w.hidden) return;
+  $("#who").innerHTML = users.list.map(u => `<option value="${esc(u.id)}" ${u.id === users.current ? "selected" : ""}>${esc(u.name || "Sin nombre")}</option>`).join("") + `<option value="__add">+ Añadir persona</option>`;
+}
+function saveLocal() {
+  if (!users.current) loadUsers();
+  try { localStorage.setItem(dataKey(), JSON.stringify({ profile: S.profile, days: S.days })); } catch (e) { /* solo memoria */ }
+  const u = users.list.find(x => x.id === users.current), nm = (S.profile && S.profile.name) || "";
+  if (u && S.profile && u.name !== nm) { u.name = nm; saveUsers(); renderWho(); }
+}
 function saveDay(d) {
   S.days[d.date] = d;
   if (S.mode === "db") put("d:" + d.date, daysCol.doc(d.date), clone(d)); else saveLocal();
@@ -1023,9 +1054,15 @@ $("#rs-yes").addEventListener("click", async () => {
   const keys = Object.keys(S.days);
   S.profile = null; S.days = {}; profDirty = false; profFilled = false; rHoy.idea = "";
   if (S.mode === "db") { try { await profRef.delete(); for (const k of keys) await daysCol.doc(k).delete(); } catch (e) { writeFail(e); } }
-  else { try { localStorage.removeItem(LS); } catch (e) { /* nada guardado */ } }
+  else {
+    try { localStorage.removeItem(dataKey()); } catch (e) { /* nada guardado */ }
+    if (users.list.length > 1) { users.list = users.list.filter(u => u.id !== users.current); users.current = users.list[0].id; saveUsers(); loadUserData(); }
+    else if (users.list[0]) { users.list[0].name = ""; saveUsers(); }
+    renderWho();
+  }
   if (document.activeElement) document.activeElement.blur();
-  location.hash = "#datos"; render(); toast("Todo borrado. Pon tus datos para empezar.");
+  location.hash = S.profile ? "#hoy" : "#datos"; render(); toast(S.profile ? "Persona borrada. Ahora estás en otra." : "Todo borrado. Pon tus datos para empezar.");
+
 });
 
 /* ---------- Eventos delegados ---------- */
@@ -1080,9 +1117,16 @@ function normProfile(p) {
 }
 function normDay(d, id) { return Object.assign({ date: id }, d, { meals: Array.isArray(d.meals) ? d.meals : [], acts: Array.isArray(d.acts) ? d.acts : [] }); }
 function goLocal(note) {
-  try { const raw = JSON.parse(localStorage.getItem(LS) || "null"); if (raw) { S.profile = normProfile(raw.profile); S.days = raw.days || {}; } } catch (e) { /* vacío */ }
-  S.mode = "local"; banner(note); route();
+  loadUsers(); loadUserData();
+  S.mode = "local"; banner(note); renderWho(); route();
 }
+$("#who").addEventListener("change", e => {
+  const v = e.target.value;
+  if (v === "__add") { const id = uidGen(); users.list.push({ id, name: "" }); users.current = id; } else users.current = v;
+  users.list = users.list.filter(u => { if (u.id === users.current || u.name) return true; try { return !!localStorage.getItem(LS + ":u:" + u.id); } catch (err) { return false; } });
+  saveUsers(); loadUserData(); profDirty = false; profFilled = false; rHoy.idea = ""; S.date = today(); S.week = monday(today());
+  e.target.blur(); renderWho(); location.hash = S.profile ? "#hoy" : "#datos"; render();
+});
 async function boot() {
   route();
   let user = null;
