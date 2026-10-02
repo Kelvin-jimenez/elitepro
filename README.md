@@ -18,3 +18,7 @@ Todo está en un único archivo, `index.html`. Los datos de cada persona se guar
 ## Modo salud
 
 En Datos se puede indicar diabetes o prediabetes, los límites que haya dado el médico y las lesiones o molestias. La app orienta; no sustituye a un médico, no calcula dosis ni cambia medicación.
+
+## Diseño
+
+Tema oscuro con amarillo por defecto. El botón redondo de la cabecera cambia entre claro y oscuro y lo recuerda en ese navegador. Los colores se definen una sola vez, al principio del `<style>`; la capa de diseño está al final del mismo bloque.
