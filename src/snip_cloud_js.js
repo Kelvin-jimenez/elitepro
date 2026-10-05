@@ -1,5 +1,5 @@
 /* ---------- Cuenta en la nube (solo versión web): copia cifrada en el servidor de Elitepro ---------- */
-const CLOUD_URL = "__CLOUD_URL__", CLOUD_WHO = "__RESPONSABLE__", CLOUD_KID = "__CLOUD_KID__";
+const CLOUD_URL = "__CLOUD_URL__", CLOUD_KID = "__CLOUD_KID__";
 const CERR = { credenciales: "Correo o contraseña incorrectos.", invitacion: "Ese código de invitación no vale o ya se ha usado.", existe: "Ya hay una cuenta con ese correo. Usa «Ya tengo cuenta».", espera: "Demasiados intentos. Espera unos minutos y vuelve a probar.", sesion: "La sesión ha caducado. Vuelve a entrar.", sin_configurar: "La nube todavía no está en marcha.", consentimiento: "Hace falta que aceptes la política de privacidad.", datos: "Revisa los datos: hay algo que no vale.", llave: "La llave del responsable no coincide con la de esta versión de la app. No se ha enviado nada: avisa al responsable." };
 const cMsg = e => CERR[e && e.code] || "No hay conexión con la nube. Inténtalo otra vez.";
 const CNOTE = "Lo que apuntes se guarda solo en este navegador. Crea una cuenta en Perfil para tener una copia en la nube.";
@@ -129,7 +129,7 @@ function cSet(st) {
 }
 const cFld = (id, label, type, ac, extra) => `<label class="fld">${label}<input id="${id}" type="${type}" autocomplete="${ac}" ${extra || ""} required></label>`;
 function cForm(mode) {
-  cMode = mode; const who = esc(CLOUD_WHO || "el responsable de Elitepro");
+  cMode = mode; const who = "el equipo de Elitepro"; // quién es el responsable, con nombre y contacto, está en la política de privacidad enlazada
   $("#sh-cloud-t").textContent = { register: "Crear cuenta", login: "Entrar", passwd: "Cambiar contraseña", remove: "Borrar mi cuenta" }[mode];
   const mail = cFld("cl-email", "Correo", "email", "username", `value="${esc(cs && cs.email || "")}" maxlength="120"`);
   $("#cl-form").innerHTML = (mode === "register" ? mail + cFld("cl-pass", "Contraseña (mínimo 10 caracteres)", "password", "new-password", 'minlength="10"') + cFld("cl-pass2", "Repite la contraseña", "password", "new-password", 'minlength="10"') + cFld("cl-inv", "Código de invitación", "text", "off", 'placeholder="EP-XXXX-XXXX" maxlength="20"') +
