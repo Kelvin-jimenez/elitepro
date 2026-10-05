@@ -26,7 +26,7 @@ class Sheet {
     }; return rg;
   }
 }
-const sheets = {}, props = {}, cache = {}, stats = { slept: 0, busy: false }, delay = { op: '', ms: 0 };
+const sheets = {}, props = {}, cache = {}, stats = { slept: 0, busy: false, mail: [] }, delay = { op: '', ms: 0 };
 const ctx = {
   SpreadsheetApp: { flush() {}, getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = new Sheet(n)) }), getUi() { throw new Error('sin interfaz'); } },
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; } }) },
@@ -39,6 +39,7 @@ const ctx = {
     getUuid: () => crypto.randomUUID(), sleep: ms => { stats.slept += ms; },
     formatDate: d => new Date(d.getTime() + 2 * 3600000).toISOString().slice(0, 16).replace('T', ' ')
   },
+  MailApp: { sendEmail: (to, subject, body) => { if (stats.nomail) throw new Error('cuota'); stats.mail.push({ to, subject, body }); } },
   ContentService: { MimeType: { JSON: 'json' }, createTextOutput: s => ({ s, setMimeType() { return this; } }) },
   Logger: { log() {} }, console
 };

@@ -38,7 +38,8 @@ Ejecuta otra vez `prepararElitepro` (da un código nuevo), abre el panel, pulsa 
 ## Límites que conviene saber
 
 - Una cuenta gratuita de Google da para un grupo pequeño (decenas de personas). Si crece, hay que pasar a una base de datos de verdad.
-- Si un usuario olvida su contraseña, no se puede recuperar: borra su cuenta desde el panel, dale otro código y que se registre de nuevo desde su dispositivo, que conserva sus datos. Si también ha perdido el dispositivo, puedes pasarle la copia que descargas en el panel.
+- Si un usuario olvida su contraseña, la cambia él mismo con «He olvidado la contraseña»: le llega un código de 6 cifras al correo de su cuenta (lo envía esta cuenta de Google; 15 minutos, un solo uso, como mucho 3 códigos cada media hora). Si lo hace desde un dispositivo con la sesión abierta no pierde nada. Si la sesión está cerrada, la cuenta se queda con lo que haya en ese dispositivo, porque lo de la nube estaba cifrado con la contraseña antigua; si el dispositivo está vacío, descarga antes su copia desde el panel y pásasela para que la recupere.
+- La primera vez que publiques una versión con envío de correo, Google pide un permiso nuevo: ejecuta `autorizarCorreo` desde el editor y acéptalo. Una cuenta gratuita puede enviar unos 100 correos al día.
 - La primera vez que un dispositivo que ya tenía datos entra en una cuenta, en lo que coincida manda la nube; lo que solo estaba en el dispositivo se conserva y se sube.
 - «Empezar de cero» borra lo del dispositivo y lo desconecta; no toca la cuenta. Para borrar la cuenta está «Borrar mi cuenta».
 - El servicio es público en internet: alguien podría saturarlo con peticiones y agotar la cuota diaria gratuita de Google (la app seguiría funcionando en local y sincronizaría al día siguiente), pero no leer ni borrar datos.

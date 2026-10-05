@@ -15,7 +15,7 @@ Al guardar datos de otras personas en tu Drive pasas a ser el **responsable del 
 | Rectificación (art. 16) | El usuario edita sus datos en la app. |
 | Supresión (art. 17) | «Borrar mi cuenta» elimina su fila del servidor al momento. También puedes borrarla tú desde el panel. |
 | Minimización (art. 5.1.c) | Solo se sube lo que la app usa. Sin cuenta, no se sube nada. |
-| Seguridad (art. 32) | Cifrado en el dispositivo (AES-256), contraseñas que nunca se envían, invitaciones de un solo uso, freno a los intentos fallidos, sesiones que caducan y se anulan al cambiar la contraseña, llave del responsable fijada en la app. Google solo almacena datos ilegibles. |
+| Seguridad (art. 32) | Cifrado en el dispositivo (AES-256), contraseñas que nunca se envían, invitaciones de un solo uso, freno a los intentos fallidos, sesiones que caducan y se anulan al cambiar la contraseña, cambio de contraseña olvidada con un código de un solo uso enviado al correo de la cuenta (15 minutos, intentos limitados, solo se guarda su huella), llave del responsable fijada en la app. Google solo almacena datos ilegibles. |
 | Edad (art. 7 LOPDGDD) | Solo mayores de 18, declarado al registrarse. |
 
 ## Lo que tienes que hacer tú

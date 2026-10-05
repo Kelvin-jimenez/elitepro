@@ -3,6 +3,7 @@
  *
  * Va dentro de una hoja de cálculo (Extensiones > Apps Script) y solo puede tocar ESA hoja:
  * @OnlyCurrentDoc
+ * Además envía un único tipo de correo: el código para cambiar una contraseña olvidada, al correo de esa cuenta.
  *
  * Qué guarda: una fila por usuario con su correo, las fechas, el consentimiento que dio y sus
  * datos CIFRADOS. El cifrado se hace en el dispositivo del usuario; aquí nunca llega nada legible
@@ -139,6 +140,42 @@ var OPS = {
     return { token: session_(u) };
   },
 
+  /* Contraseña olvidada, paso 1: se envía al correo de la cuenta un código de 6 cifras que vale 15 minutos.
+     Contesta igual exista o no la cuenta, para no revelar quién está registrado. Máximo 3 códigos por correo cada media hora. */
+  reset_ask: function (b) {
+    var email = str_(b.email, 120), c = CacheService.getScriptCache(), key = "rst:" + sha_(email).slice(0, 24), n = Number(c.get(key) || 0);
+    if (n >= 3) return {};
+    c.put(key, String(n + 1), 1800);
+    var s = sheet_(USERS), row = find_(s, 2, email); if (!row) return {};
+    var u = read_(s, row, false), code = ("000000" + (parseInt(rand_().slice(0, 8), 16) % 1000000)).slice(-6), salt = rand_().slice(0, 16);
+    u.sec.reset = { salt: salt, hash: sha_(salt + code), exp: Date.now() + 15 * 60000, n: 0 };
+    write_(s, u, null);
+    try {
+      MailApp.sendEmail(email, "Elitepro: tu código para cambiar la contraseña",
+        "Tu código para poner una contraseña nueva en Elitepro es:\n\n    " + code + "\n\nVale durante 15 minutos y solo una vez.\n\nSi no lo has pedido tú, no hagas nada: tu contraseña sigue siendo la misma.");
+    } catch (err) { console.error("Elitepro · no se pudo enviar el correo: " + err); fail_("correo"); }
+    return {};
+  },
+
+  /* Paso 2: con el código se pone la contraseña nueva. Las sesiones abiertas dejan de valer.
+     Si el dispositivo conserva la llave de los datos, solo la vuelve a guardar protegida con la contraseña nueva (`wrapUser`).
+     Si no la tiene, manda una llave y unos datos nuevos (`blob`): lo que había en la nube no se puede leer sin la contraseña antigua. */
+  reset_do: function (b) {
+    var email = str_(b.email, 120), code = str_(b.code, 20).replace(/\D/g, ""), auth = str_(b.auth, 64, /^[0-9a-f]{64}$/), key = "rsd:" + sha_(email).slice(0, 24);
+    var s = sheet_(USERS), row = find_(s, 2, email); if (!row) bad_(key, "codigo", 5);
+    var u = read_(s, row, true), r = u.sec.reset;
+    if (!r || r.exp < Date.now() || r.n >= 5) bad_(key, "codigo", 5);
+    if (!same_(sha_(r.salt + code), r.hash)) { r.n++; write_(s, u, null); bad_(key, "codigo", 5); }
+    var blob = null;
+    if (typeof b.blob === "string") {
+      if (b.blob.length > MAX_BLOB) fail_("datos");
+      u.sec.wrapCoach = str_(b.wrapCoach, 2000); u.sec.kid = str_(b.kid, 80); u.sec.health = false; u.consent = consent_({ health: false }) + " · contraseña restablecida"; u.rev++; blob = b.blob;
+    }
+    u.sec.salt = rand_().slice(0, 32); u.sec.hash = sha_(u.sec.salt + auth); u.sec.tv = (u.sec.tv || 0) + 1; u.sec.wrapUser = str_(b.wrapUser, 400); delete u.sec.reset;
+    u.seen = now_(); write_(s, u, blob);
+    return { token: session_(u), rev: u.rev, health: !!u.sec.health, kid: u.sec.kid, ckid: ckid_() };
+  },
+
   /* Derecho de supresión: el usuario borra su cuenta y todos sus datos del servidor */
   remove: function (b) {
     var x = user_(b.token, false), u = x.u, auth = str_(b.auth, 64, /^[0-9a-f]{64}$/);
@@ -202,7 +239,7 @@ var OPS = {
 /* ---------- entrada ---------- */
 /* Solo las operaciones que escriben en la hoja cogen turno, y esperan poco: si otra petición lo tiene, se contesta
    «ocupado» y la app lo reintenta. Las lecturas no esperan a nadie, así una petición atascada no deja fuera a los demás. */
-var WRITES = { register: 1, save: 1, passwd: 1, remove: 1, a_setup: 1, a_invite: 1, a_delete: 1 };
+var WRITES = { register: 1, save: 1, passwd: 1, remove: 1, reset_ask: 1, reset_do: 1, a_setup: 1, a_invite: 1, a_delete: 1 };
 function doPost(e) {
   var out, slow = false, lock = null, t0 = Date.now(), name = "?";
   try {
@@ -223,6 +260,12 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 function doGet() { return ContentService.createTextOutput("Elitepro: servicio activo."); }
+
+/**
+ * Ejecuta esta función UNA vez desde el editor cuando Google pida permiso para enviar correo:
+ * sirve solo para conceder ese permiso (los códigos de «He olvidado la contraseña»). No cambia nada.
+ */
+function autorizarCorreo() { Logger.log("Permiso de correo concedido. Envíos que quedan hoy: " + MailApp.getRemainingDailyQuota()); }
 
 /**
  * Ejecuta esta función UNA vez desde el editor (botón Ejecutar): crea las pestañas y un código de

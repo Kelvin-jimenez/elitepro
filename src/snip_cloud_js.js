@@ -1,11 +1,11 @@
 /* ---------- Cuenta en la nube (solo versión web): copia cifrada en el servidor de Elitepro ---------- */
 const CLOUD_URL = "__CLOUD_URL__", CLOUD_KID = "__CLOUD_KID__";
 const CERR = { credenciales: "Correo o contraseña incorrectos.", invitacion: "Ese código de invitación no vale o ya se ha usado.", existe: "Ya hay una cuenta con ese correo. Usa «Ya tengo cuenta».", espera: "Demasiados intentos. Espera unos minutos y vuelve a probar.", sesion: "La sesión ha caducado. Vuelve a entrar.", sin_configurar: "La nube todavía no está en marcha.", consentimiento: "Hace falta que aceptes la política de privacidad.", datos: "Revisa los datos: hay algo que no vale.", llave: "La llave del responsable no coincide con la de esta versión de la app. No se ha enviado nada: avisa al responsable." };
-Object.assign(CERR, { red: "No hay conexión con la nube. Comprueba tu internet e inténtalo otra vez.", lento: "La nube está tardando demasiado en contestar. Espera un minuto e inténtalo otra vez.", ocupado: "La nube está ocupada ahora mismo. Espera un minuto e inténtalo otra vez.", raro: "La nube ha contestado algo inesperado. Inténtalo otra vez en un minuto." });
+Object.assign(CERR, { red: "No hay conexión con la nube. Comprueba tu internet e inténtalo otra vez.", lento: "La nube está tardando demasiado en contestar. Espera un minuto e inténtalo otra vez.", ocupado: "La nube está ocupada ahora mismo. Espera un minuto e inténtalo otra vez.", raro: "La nube ha contestado algo inesperado. Inténtalo otra vez en un minuto.", codigo: "Ese código no vale o ha caducado. Pide otro.", correo: "No se ha podido enviar el correo con el código. Inténtalo otra vez en un rato." });
 /* Cada fallo dice lo que es: de conexión, del servidor o de este dispositivo */
 const cMsg = e => CERR[e && e.code] || (e && e.code ? "La nube ha dado un error (" + e.code + "). Inténtalo otra vez en un minuto; si sigue, avisa al responsable." : "Ha fallado algo en este dispositivo" + (e && e.message ? ": " + String(e.message).slice(0, 120) : "") + ".");
 const CNOTE = "Lo que apuntes se guarda solo en este navegador. Crea una cuenta en Perfil para tener una copia en la nube.";
-let cs = null, csFor = null, cT = 0, cBusy = false, cAgain = false, cState = "", cMode = "";
+let cs = null, csFor = null, cT = 0, cBusy = false, cAgain = false, cState = "", cMode = "", cRst = "";
 const cOn = () => !!(cs && !cs.out);
 function cLoad() {
   csFor = users.current; try { cs = JSON.parse(localStorage.getItem("elitepro:cloud:" + csFor) || "null"); } catch (e) { cs = null; }
@@ -112,7 +112,7 @@ document.body.insertAdjacentHTML("beforeend", `<dialog class="sheet" id="sh-clou
   <div class="sheet-head"><h2 id="sh-cloud-t"></h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <form id="cl-form" class="col" style="gap:12px"></form>
 </div></dialog>
-<style>.chk{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;color:var(--ink-2);line-height:1.4;cursor:pointer}.chk input{width:20px;height:20px;flex:0 0 auto;margin-top:1px;accent-color:var(--mark)}#cl-body a,#cl-form a{color:var(--ink);text-decoration:underline}#cl-form input[type="email"],#cl-form input[type="password"]{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%;min-width:0;color:var(--ink);font:inherit}</style>`);
+<style>.chk{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;color:var(--ink-2);line-height:1.4;cursor:pointer}.chk input{width:20px;height:20px;flex:0 0 auto;margin-top:1px;accent-color:var(--mark)}#cl-body a,#cl-form a{color:var(--ink);text-decoration:underline}#cl-form input:not([type="checkbox"]){background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%;min-width:0;color:var(--ink);font:inherit}.pw{position:relative;display:block}.pw input{padding-right:52px}.eye{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:40px;display:grid;place-items:center;background:none;border:0;border-radius:8px;color:var(--muted);cursor:pointer}.eye:hover,.eye[data-eye="on"]{color:var(--ink)}.eye:focus-visible{outline:2px solid var(--mark);outline-offset:-2px}.eye .off{display:none}.eye[data-eye="on"] .off{display:inline}.lnk{background:none;border:0;padding:6px 0;color:var(--ink);text-decoration:underline;font:inherit;font-size:.9rem;cursor:pointer;text-align:left}.warn{border:1px solid var(--line);border-left:3px solid var(--crit);border-radius:10px;padding:10px 12px;font-size:.9rem;color:var(--ink-2);line-height:1.45}</style>`);
 $("#v-need").insertAdjacentHTML("beforeend", `<div><button class="btn ghost" type="button" data-cl="login">Ya tengo cuenta en la nube</button></div>`);
 /* Aviso en Hoy para quien aún no tiene cuenta: una línea que se puede cerrar */
 $("#v-hoy .dash").insertAdjacentHTML("beforebegin", `<div class="card" id="cl-cta" hidden style="flex-direction:row;align-items:center;gap:10px 12px;flex-wrap:wrap;padding:14px 18px"><span style="flex:1 1 240px;min-width:0"><b>Guarda tus datos en la nube.</b> <span class="sub">No se pierden si cambias de móvil. Hace falta un código de invitación.</span></span><button class="btn sm" type="button" data-cl="register">Crear cuenta</button><button class="btn ghost sm" type="button" data-cl="login">Ya tengo cuenta</button><button class="icon-btn" type="button" id="cl-cta-x" aria-label="No mostrar más este aviso">×</button></div>`);
@@ -136,10 +136,19 @@ function cSet(st) {
     <div class="row">${on ? `<button class="btn ghost sm" type="button" data-cl="sync">Sincronizar ahora</button><button class="btn ghost sm" type="button" data-cl="passwd">Cambiar contraseña</button>` : `<button class="btn" type="button" data-cl="login">Volver a entrar</button>`}<button class="btn ghost sm" type="button" data-cl="logout">Cerrar sesión</button>${on ? `<button class="btn ghost sm" type="button" data-cl="remove">Borrar mi cuenta</button>` : ""}</div>
     <p class="sub"><a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a> · Para descargar todos tus datos usa «Descargar copia», aquí debajo.</p>`;
 }
-const cFld = (id, label, type, ac, extra) => `<label class="fld">${label}<input id="${id}" type="${type}" autocomplete="${ac}" ${extra || ""} required></label>`;
+/* Las contraseñas llevan un botón para ver lo que se está escribiendo */
+const EYE = `<button type="button" class="eye" data-eye="" aria-label="Ver la contraseña"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="off" d="M4 4l16 16"/></svg></button>`;
+const cFld = (id, label, type, ac, extra) => { const inp = `<input id="${id}" type="${type}" autocomplete="${ac}" ${extra || ""} required>`; return `<label class="fld">${label}${type === "password" ? `<span class="pw">${inp}${EYE}</span>` : inp}</label>`; };
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-eye]"); if (!b) return;
+  e.preventDefault(); const i = b.parentNode.querySelector("input"), on = i.type === "password";
+  i.type = on ? "text" : "password"; b.dataset.eye = on ? "on" : ""; b.setAttribute("aria-label", (on ? "Ocultar" : "Ver") + " la contraseña"); i.focus();
+});
+/* ¿Conserva este dispositivo la llave de los datos de esa cuenta? Si la tiene, cambiar la contraseña no toca lo guardado */
+const cKey = email => (cs && !cs.out && cs.dek && cs.email === email ? cs : null);
 function cForm(mode) {
   cMode = mode; const who = "el equipo de Elitepro"; // quién es el responsable, con nombre y contacto, está en la política de privacidad enlazada
-  $("#sh-cloud-t").textContent = { register: "Crear cuenta", login: "Entrar", passwd: "Cambiar contraseña", remove: "Borrar mi cuenta" }[mode];
+  $("#sh-cloud-t").textContent = { register: "Crear cuenta", login: "Entrar", passwd: "Cambiar contraseña", remove: "Borrar mi cuenta", reset1: "He olvidado la contraseña", reset2: "Contraseña nueva" }[mode];
   const mail = cFld("cl-email", "Correo", "email", "username", `value="${esc(cs && cs.email || "")}" maxlength="120"`);
   $("#cl-form").innerHTML = (mode === "register" ? mail + cFld("cl-pass", "Contraseña (mínimo 10 caracteres)", "password", "new-password", 'minlength="10"') + cFld("cl-pass2", "Repite la contraseña", "password", "new-password", 'minlength="10"') + cFld("cl-inv", "Código de invitación", "text", "off", 'placeholder="EP-XXXX-XXXX" maxlength="20"') +
       `<p class="sub">Con la contraseña se cifran tus datos antes de salir de este dispositivo. Guárdala bien: si la olvidas no se puede recuperar.</p>
@@ -147,8 +156,13 @@ function cForm(mode) {
       <label class="chk"><input type="checkbox" id="cl-hc"><span>Además, consiento expresamente que se guarden y que ${who} pueda ver mis datos de salud: condición, límites del médico, glucosa y lesiones. Es opcional: si no lo marcas, esos datos no salen de este dispositivo.</span></label>`
     : mode === "login" ? mail + cFld("cl-pass", "Contraseña", "password", "current-password")
     : mode === "passwd" ? cFld("cl-pass", "Contraseña actual", "password", "current-password") + cFld("cl-new", "Contraseña nueva (mínimo 10 caracteres)", "password", "new-password", 'minlength="10"') + cFld("cl-pass2", "Repite la nueva", "password", "new-password", 'minlength="10"')
+    : mode === "reset1" ? `<p class="sub">Te mandamos un código de 6 cifras al correo de tu cuenta. Con él pones una contraseña nueva.</p>` + cFld("cl-email", "Correo de tu cuenta", "email", "username", `value="${esc(cRst)}" maxlength="120"${cs && cs.token ? " readonly" : ""}`)
+    : mode === "reset2" ? `<p class="sub">Si hay una cuenta con <b>${esc(cRst)}</b>, acabamos de mandarle un código de 6 cifras. Puede tardar un minuto; mira también en la carpeta de correo no deseado. Vale 15 minutos.</p>` + cFld("cl-code", "Código de 6 cifras", "text", "one-time-code", 'inputmode="numeric" maxlength="8" placeholder="000000"') + cFld("cl-new", "Contraseña nueva (mínimo 10 caracteres)", "password", "new-password", 'minlength="10"') + cFld("cl-pass2", "Repite la nueva", "password", "new-password", 'minlength="10"') +
+      (cKey(cRst) ? `<p class="sub">Tus datos no se tocan: solo cambia la contraseña.</p>`
+        : `<div class="warn"><b>Léelo antes de seguir.</b> Tus datos se guardan cifrados con tu contraseña y este dispositivo no tiene la sesión abierta, así que no puede abrir lo que hay en la nube. Al poner la contraseña nueva, ${S.profile ? "tu cuenta se queda con lo que hay ahora en este dispositivo" : "tu cuenta se queda vacía, porque en este dispositivo no hay datos"}. Si en otro móvil u ordenador sigues con la sesión abierta, hazlo mejor desde allí (Perfil → Cambiar contraseña → No recuerdo la actual) y no se pierde nada.</div>
+        <label class="chk"><input type="checkbox" id="cl-sure" required><span>Entiendo que lo guardado en la nube se sustituye por lo que hay en este dispositivo${S.profile ? "" : ", que está vacío"}. Los datos de salud no se suben hasta que vuelva a marcar su casilla.</span></label>`)
     : `<p class="sub">Se borran del servidor tu cuenta y todos tus datos. Lo que tienes en este dispositivo no se toca. No se puede deshacer.</p>` + cFld("cl-pass", "Contraseña", "password", "current-password"))
-    + `<div class="row actions"><button class="btn" type="submit" id="cl-go">${{ register: "Crear cuenta", login: "Entrar", passwd: "Cambiar contraseña", remove: "Borrar mi cuenta y mis datos de la nube" }[mode]}</button></div><p id="cl-msg" class="msg" aria-live="polite"></p>`;
+    + `<div class="row actions"><button class="btn" type="submit" id="cl-go">${{ register: "Crear cuenta", login: "Entrar", passwd: "Cambiar contraseña", remove: "Borrar mi cuenta y mis datos de la nube", reset1: "Enviarme el código", reset2: "Cambiar contraseña" }[mode]}</button></div>${mode === "login" ? `<button class="lnk" type="button" data-cl="reset1">He olvidado la contraseña</button>` : mode === "passwd" ? `<button class="lnk" type="button" data-cl="reset1">No recuerdo la actual</button>` : mode === "reset2" ? `<button class="lnk" type="button" data-cl="reset1">No me ha llegado: pedir otro código</button>` : ""}<p id="cl-msg" class="msg" aria-live="polite"></p>`;
   openSheet("cloud");
 }
 document.addEventListener("click", e => {
@@ -159,6 +173,7 @@ document.addEventListener("click", e => {
     clearTimeout(cT); cs = { uid: cs.uid, email: cs.email, out: true, rev: cs.rev, base: cs.base, health: cs.health, kid: cs.kid }; cStore(); cSet(""); cNote();
     return toast("Sesión cerrada. Tus datos siguen en este dispositivo.");
   }
+  if (a === "reset1") { const typed = cMode === "login" && $("#cl-email") ? $("#cl-email").value.trim().toLowerCase() : ""; cRst = cs && cs.token ? cs.email : typed || cRst || (cs && cs.email) || ""; }
   cForm(a);
 });
 document.addEventListener("change", e => {
@@ -169,12 +184,32 @@ document.addEventListener("change", e => {
 $("#cl-form").addEventListener("submit", async e => {
   e.preventDefault();
   const msg = $("#cl-msg"), go = $("#cl-go"), val = id => ($("#" + id) ? $("#" + id).value : ""), say = (t, err) => { msg.textContent = t; msg.className = "msg" + (err ? " err" : ""); };
-  const email = (cMode === "passwd" || cMode === "remove" ? cs.email : val("cl-email")).trim().toLowerCase(), pass = val("cl-pass");
-  if ((cMode === "register" || cMode === "passwd") && (cMode === "passwd" ? val("cl-new") : pass) !== val("cl-pass2")) return say("Las dos contraseñas no coinciden.", true);
+  document.querySelectorAll("#cl-form [data-eye='on']").forEach(b => b.click()); // al enviar, las contraseñas vuelven a ir ocultas
+  const email = (cMode === "passwd" || cMode === "remove" ? cs.email : cMode === "reset2" ? cRst : val("cl-email")).trim().toLowerCase(), fresh = cMode === "passwd" || cMode === "reset2" ? val("cl-new") : val("cl-pass"), pass = cMode === "reset2" ? fresh : val("cl-pass");
+  if (cMode === "register" || cMode === "passwd" || cMode === "reset2") {
+    if (fresh !== val("cl-pass2")) return say("Las dos contraseñas no coinciden.", true);
+    if (fresh.length < 10) return say("La contraseña tiene que tener al menos 10 caracteres.", true);
+  }
+  const code = val("cl-code").replace(/\D/g, "");
+  if (cMode === "reset2" && code.length !== 6) return say("El código tiene 6 cifras.", true);
   go.disabled = true; say("Un momento…");
   try {
+    if (cMode === "reset1") { await EPC.api(CLOUD_URL, { op: "reset_ask", email }); cRst = email; return cForm("reset2"); }
     const k = await EPC.derive(pass, "elitepro:user:" + email);
-    if (cMode === "register") {
+    if (cMode === "reset2") {
+      const keep = cKey(email);
+      if (keep) { // este dispositivo tiene la llave: se vuelve a guardar protegida con la contraseña nueva y los datos siguen como estaban
+        const r = await EPC.api(CLOUD_URL, { op: "reset_do", email, code, auth: k.auth, wrapUser: EPC.b64(await EPC.enc(k.kek, EPC.unb64(keep.dek))) });
+        keep.token = r.token; cStore(keep);
+        if (cs === keep) { closeSheets(); cSet("ok"); cNote(); cSync(true); }
+      } else { // sin la llave, lo de la nube no se puede abrir: la cuenta empieza de nuevo con lo que hay aquí (la salud, solo si se vuelve a consentir)
+        const pub = await cPub(), dek = EPC.rand(32), me = { uid: users.current, email, token: "", dek: EPC.b64(dek), rev: 0, base: cEmpty(), health: false, kid: pub.kid }, snap = cSnap(me);
+        const r = await EPC.api(CLOUD_URL, { op: "reset_do", email, code, auth: k.auth, wrapUser: EPC.b64(await EPC.enc(k.kek, dek)), wrapCoach: await EPC.wrapFor(pub.pub, dek), kid: pub.kid, blob: await EPC.seal(dek, snap) });
+        me.token = r.token; me.rev = r.rev; me.base = cHashes(me, snap); me.at = Date.now();
+        cs = me; csFor = me.uid; cStore(); closeSheets(); cSet("ok"); cNote();
+      }
+      cRst = ""; toast("Contraseña cambiada. En tus otros dispositivos tendrás que volver a entrar.");
+    } else if (cMode === "register") {
       const pub = await cPub(), dek = EPC.rand(32);
       const me = { uid: users.current, email, token: "", dek: EPC.b64(dek), rev: 0, base: cEmpty(), health: $("#cl-hc").checked, kid: pub.kid };
       const snap = cSnap(me);

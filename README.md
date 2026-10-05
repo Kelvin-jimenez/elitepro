@@ -82,6 +82,7 @@ En `pruebas/`, con Node y Playwright:
 - `node pruebas/pwa.test.mjs /tmp/ep`: app instalable, uso sin conexión y aviso de cuenta en Hoy.
 - `node pruebas/version.test.mjs /tmp/ep`: actualización automática.
 - `node pruebas/nube2.test.mjs /tmp/ep`: casos límite (guardados en curso, volver a entrar, empezar de cero, cambio de contraseña).
+- `node pruebas/clave.test.mjs /tmp/ep`: botón de ver la contraseña y «He olvidado la contraseña» (código por correo, con y sin la llave en el dispositivo).
 
 ## Modo salud
 
