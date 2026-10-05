@@ -35,6 +35,12 @@ Los formularios (comida, entreno, peso, glucosa, competición, entreno previsto)
 - **Plan pautado** (`profile.diet`): el plan de comidas que le ha dado su nutricionista, por comidas (`slots`) o solo con los totales del día (`tot`). En Hoy se compara con lo que pide el día según el entreno: encaja si queda a ±10 %, se queda corto por debajo y sobra por encima; se indica el macronutriente que más pesa en la diferencia. Es una orientación y así se dice en pantalla. Los momentos vacíos ofrecen «Apuntar lo pautado».
 - **Recordatorios** (`profile.rem` y `profile.medrem`): avisos de comida, hidratación, medicación u otros, con hora y días. Cada uno abre Google Calendar con el evento relleno y repitiéndose; en la web, además, se descargan todos en un `.ics`. Los de medicación van aparte y no se suben a la nube.
 
+## Buscador, «mis platos» y asistente
+
+- **Buscar al escribir**: en «Qué has comido» salen sugerencias de una lista de más de 300 alimentos y platos (sin tildes, con las palabras en cualquier orden). Al elegir una se rellenan la ración y los macros.
+- **Mis platos** (`profile.foods`): lo que se apunta a mano y no está en la lista se recuerda (casilla marcada por defecto) y la próxima vez sale al buscarlo, marcado como «Tuyo». Varias cosas de un mismo momento del día se pueden guardar juntas como un plato. Se quitan desde «Buscar en la lista».
+- **Asistente** (`sample`): se le escribe o se le manda una foto y apunta comidas y entrenos (con «Deshacer»), y contesta dudas del día con el contexto de la semana. Dentro de Claude usa la IA de quien abre la app; en la web pasa por el servidor (operación `ai`) con la clave de la API de Anthropic guardada allí. No recibe datos de salud y la conversación no se guarda.
+
 ## Entrenos desde el reloj
 
 «Importar del reloj» lee el archivo de la actividad y rellena el formulario para revisarlo antes de guardar:
@@ -82,6 +88,7 @@ En `pruebas/`, con Node y Playwright:
 - `node pruebas/pwa.test.mjs /tmp/ep`: app instalable, uso sin conexión y aviso de cuenta en Hoy.
 - `node pruebas/version.test.mjs /tmp/ep`: actualización automática.
 - `node pruebas/nube2.test.mjs /tmp/ep`: casos límite (guardados en curso, volver a entrar, empezar de cero, cambio de contraseña).
+- `node pruebas/ia.test.mjs /tmp/ep`: buscador de alimentos, «mis platos» e IA fuera de Claude (foto, calcular y asistente) con una imitación de la API.
 - `node pruebas/clave.test.mjs /tmp/ep`: botón de ver la contraseña y «He olvidado la contraseña» (código por correo, con y sin la llave en el dispositivo).
 
 ## Modo salud

@@ -84,6 +84,14 @@ function user_(tok, withBlob) {
 function session_(u) { return token_(u.id + "~" + (u.sec.tv || 0), 24 * 30); }
 function admin_(tok) { if (check_(tok) !== "admin") fail_("sesion"); }
 function forget_(email) { var inv = sheet_(INVITES), row = find_(inv, 3, email); if (row) inv.getRange(row, 3, 1, 1).setNumberFormat("@").setValues([["(cuenta borrada)"]]); }
+/* IA: el servidor hace de puente con la API de Anthropic, para que la clave no salga de aquí. Límites por persona y en total, al día. */
+var AI_MODEL = "claude-haiku-4-5-20251001", AI_PER_USER = 60, AI_PER_DAY = 600;
+function aiOn_() { return !!props_().getProperty("ai_key"); }
+function aiCount_(name, max) {
+  var p = props_(), day = now_().slice(0, 10), raw = String(p.getProperty(name) || "").split("|"), n = raw[0] === day ? Number(raw[1]) || 0 : 0;
+  if (n >= max) fail_("limite_ia");
+  p.setProperty(name, day + "|" + (n + 1));
+}
 function coach_() { var raw = props_().getProperty("coach"); return raw ? JSON.parse(raw) : null; }
 function ckid_() { var c = coach_(); return c ? c.kid : ""; }
 
@@ -100,7 +108,7 @@ var OPS = {
     var s = sheet_(USERS), had = find_(s, 2, email);
     if (had) { // el correo ya tiene cuenta: si es el mismo registro repetido (se perdió la respuesta), se entra en ella
       var prev = read_(s, had, false); if (!same_(sha_(prev.sec.salt + auth), prev.sec.hash)) fail_("existe");
-      return { token: session_(prev), rev: prev.rev, existing: true };
+      return { token: session_(prev), rev: prev.rev, existing: true, ai: aiOn_() };
     }
     var inv = sheet_(INVITES), irow = find_(inv, 1, code);
     if (!irow || String(inv.getRange(irow, 3).getValue())) bad_("reg", "invitacion", 20);
@@ -108,17 +116,17 @@ var OPS = {
       sec: { salt: salt, hash: sha_(salt + auth), tv: 0, wrapUser: b.wrapUser, wrapCoach: b.wrapCoach, kid: b.kid, health: !!b.consent.health } };
     write_(s, u, b.blob);
     inv.getRange(irow, 3, 1, 2).setNumberFormat("@").setValues([[email, now_()]]);
-    return { token: session_(u), rev: 1 };
+    return { token: session_(u), rev: 1, ai: aiOn_() };
   },
 
   login: function (b) {
     var email = str_(b.email, 120), auth = str_(b.auth, 64, /^[0-9a-f]{64}$/), key = "log:" + sha_(email).slice(0, 24);
     var s = sheet_(USERS), row = find_(s, 2, email); if (!row) bad_(key, "credenciales");
     var u = read_(s, row, true); if (!same_(sha_(u.sec.salt + auth), u.sec.hash)) bad_(key, "credenciales");
-    return { token: session_(u), rev: u.rev, blob: u.blob, wrapUser: u.sec.wrapUser, kid: u.sec.kid, ckid: ckid_(), health: !!u.sec.health };
+    return { token: session_(u), rev: u.rev, blob: u.blob, wrapUser: u.sec.wrapUser, kid: u.sec.kid, ckid: ckid_(), health: !!u.sec.health, ai: aiOn_() };
   },
 
-  load: function (b) { var x = user_(b.token, true); return { rev: x.u.rev, blob: x.u.blob, kid: x.u.sec.kid, ckid: ckid_(), health: !!x.u.sec.health }; },
+  load: function (b) { var x = user_(b.token, true); return { rev: x.u.rev, blob: x.u.blob, kid: x.u.sec.kid, ckid: ckid_(), health: !!x.u.sec.health, ai: aiOn_() }; },
 
   /* Guarda solo si el dispositivo partía de la última versión; si no, devuelve la que hay para que las junte */
   save: function (b) {
@@ -173,15 +181,41 @@ var OPS = {
     }
     u.sec.salt = rand_().slice(0, 32); u.sec.hash = sha_(u.sec.salt + auth); u.sec.tv = (u.sec.tv || 0) + 1; u.sec.wrapUser = str_(b.wrapUser, 400); delete u.sec.reset;
     u.seen = now_(); write_(s, u, blob);
-    return { token: session_(u), rev: u.rev, health: !!u.sec.health, kid: u.sec.kid, ckid: ckid_() };
+    return { token: session_(u), rev: u.rev, health: !!u.sec.health, kid: u.sec.kid, ckid: ckid_(), ai: aiOn_() };
   },
 
   /* Derecho de supresión: el usuario borra su cuenta y todos sus datos del servidor */
   remove: function (b) {
     var x = user_(b.token, false), u = x.u, auth = str_(b.auth, 64, /^[0-9a-f]{64}$/);
     if (!same_(sha_(u.sec.salt + auth), u.sec.hash)) bad_("pw:" + u.id, "credenciales");
-    x.s.deleteRow(u.row); forget_(u.email);
+    x.s.deleteRow(u.row); forget_(u.email); props_().deleteProperty("ai_n:" + u.id);
     return {};
+  },
+
+  /* IA para quien tiene la sesión abierta: reenvía la petición (texto y, si acaso, fotos) a la API de Anthropic y devuelve el texto.
+     No guarda nada de lo que se pregunta ni de lo que se contesta. */
+  ai: function (b) {
+    var x = user_(b.token, false), p = props_(), key = p.getProperty("ai_key"); if (!key) fail_("sin_ia");
+    if (!Array.isArray(b.messages) || !b.messages.length || b.messages.length > 12) fail_("datos");
+    var chars = 0, imgs = 0, msgs = b.messages.map(function (m) {
+      if (!m || (m.role !== "user" && m.role !== "assistant") || !Array.isArray(m.content) || !m.content.length) fail_("datos");
+      return { role: m.role, content: m.content.map(function (c) {
+        if (c && c.type === "text") { var t = str_(c.text, 20000); chars += t.length; return { type: "text", text: t }; }
+        if (c && c.type === "image" && m.role === "user") { imgs++; return { type: "image", source: { type: "base64", media_type: str_(c.media_type, 20, /^image\/(jpeg|png|webp)$/), data: str_(c.data, 2000000, /^[A-Za-z0-9+\/=]+$/) } }; }
+        fail_("datos");
+      }) };
+    });
+    if (chars > 30000 || imgs > 3 || msgs[0].role !== "user") fail_("datos");
+    aiCount_("ai_n:" + x.u.id, Number(p.getProperty("ai_max_user")) || AI_PER_USER); aiCount_("ai_day", Number(p.getProperty("ai_max_day")) || AI_PER_DAY);
+    var body = { model: p.getProperty("ai_model") || AI_MODEL, max_tokens: Math.max(100, Math.min(Number(b.max) || 1000, 1500)), messages: msgs };
+    if (typeof b.system === "string" && b.system) body.system = str_(b.system, 8000);
+    var res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", { method: "post", contentType: "application/json", headers: { "x-api-key": key, "anthropic-version": "2023-06-01" }, payload: JSON.stringify(body), muteHttpExceptions: true });
+    var code = res.getResponseCode(), out; try { out = JSON.parse(res.getContentText()); } catch (err) { out = null; }
+    if (code !== 200 || !out || !Array.isArray(out.content)) {
+      console.error("Elitepro · IA " + code + ": " + String(res.getContentText()).slice(0, 300));
+      fail_(code === 429 || code === 529 ? "ia_ocupada" : code === 401 || code === 403 ? "sin_ia" : "ia");
+    }
+    return { text: out.content.filter(function (c) { return c.type === "text"; }).map(function (c) { return c.text; }).join("") };
   },
 
   /* ---------- operaciones del entrenador ---------- */
@@ -231,7 +265,7 @@ var OPS = {
     admin_(b.token);
     var s = sheet_(USERS), row = find_(s, 1, str_(b.id, 40)); if (!row) fail_("no_existe");
     var email = String(s.getRange(row, 2).getValue());
-    s.deleteRow(row); forget_(email);
+    s.deleteRow(row); forget_(email); props_().deleteProperty("ai_n:" + b.id);
     return {};
   }
 };
@@ -262,10 +296,14 @@ function doPost(e) {
 function doGet() { return ContentService.createTextOutput("Elitepro: servicio activo."); }
 
 /**
- * Ejecuta esta función UNA vez desde el editor cuando Google pida permiso para enviar correo:
- * sirve solo para conceder ese permiso (los códigos de «He olvidado la contraseña»). No cambia nada.
+ * Ejecuta esta función desde el editor cuando publiques una versión que pida permisos nuevos (enviar correo
+ * para los códigos de «He olvidado la contraseña», conectar con la API de la IA). Solo sirve para concederlos: no cambia nada.
  */
-function autorizarCorreo() { Logger.log("Permiso de correo concedido. Envíos que quedan hoy: " + MailApp.getRemainingDailyQuota()); }
+function autorizarPermisos() {
+  Logger.log("Correo: quedan " + MailApp.getRemainingDailyQuota() + " envíos hoy.");
+  Logger.log("Conexión exterior: " + UrlFetchApp.fetch("https://api.anthropic.com/", { muteHttpExceptions: true }).getResponseCode());
+  Logger.log("IA: " + (aiOn_() ? "hay clave puesta." : "falta la clave (propiedad ai_key)."));
+}
 
 /**
  * Ejecuta esta función UNA vez desde el editor (botón Ejecutar): crea las pestañas y un código de

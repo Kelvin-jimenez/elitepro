@@ -39,7 +39,19 @@ Ejecuta otra vez `prepararElitepro` (da un código nuevo), abre el panel, pulsa 
 
 - Una cuenta gratuita de Google da para un grupo pequeño (decenas de personas). Si crece, hay que pasar a una base de datos de verdad.
 - Si un usuario olvida su contraseña, la cambia él mismo con «He olvidado la contraseña»: le llega un código de 6 cifras al correo de su cuenta (lo envía esta cuenta de Google; 15 minutos, un solo uso, como mucho 3 códigos cada media hora). Si lo hace desde un dispositivo con la sesión abierta no pierde nada. Si la sesión está cerrada, la cuenta se queda con lo que haya en ese dispositivo, porque lo de la nube estaba cifrado con la contraseña antigua; si el dispositivo está vacío, descarga antes su copia desde el panel y pásasela para que la recupere.
-- La primera vez que publiques una versión con envío de correo, Google pide un permiso nuevo: ejecuta `autorizarCorreo` desde el editor y acéptalo. Una cuenta gratuita puede enviar unos 100 correos al día.
+- Cuando publiques una versión que use algo nuevo (enviar correo, conectar con la IA), Google pide permisos nuevos: ejecuta `autorizarPermisos` desde el editor y acéptalos. Una cuenta gratuita puede enviar unos 100 correos al día.
+
+## Inteligencia artificial (opcional)
+
+La foto del plato, «Calcular con IA» y el asistente funcionan fuera de Claude si el servidor tiene una clave de la API de Anthropic. La clave nunca sale del servidor.
+
+1. Crea una cuenta en console.anthropic.com, añade saldo (es de pago por uso) y crea una clave de API. Pon un límite de gasto mensual en la consola.
+2. En el editor de Apps Script: Configuración del proyecto (rueda dentada) → Propiedades de la secuencia de comandos → Añadir propiedad `ai_key` con la clave. No la pegues en ningún otro sitio.
+3. Ejecuta `autorizarPermisos` y publica una versión nueva.
+
+Opcionales, también como propiedades: `ai_model` (por defecto `claude-haiku-4-5-20251001`, el más barato; con `claude-sonnet-5-5` estima mejor y cuesta más), `ai_max_user` (usos por persona y día, 60 por defecto) y `ai_max_day` (usos en total al día, 600). Para apagar la IA, borra `ai_key`.
+
+Solo la puede usar quien tiene la sesión abierta. No se envían nombre, correo ni datos de salud, y el servidor no guarda ni lo que se pregunta ni lo que se contesta. Antes de activarla, revisa las condiciones comerciales y el acuerdo de tratamiento de datos de Anthropic, y deja la política de privacidad al día (ya lo menciona).
 - La primera vez que un dispositivo que ya tenía datos entra en una cuenta, en lo que coincida manda la nube; lo que solo estaba en el dispositivo se conserva y se sube.
 - «Empezar de cero» borra lo del dispositivo y lo desconecta; no toca la cuenta. Para borrar la cuenta está «Borrar mi cuenta».
 - El servicio es público en internet: alguien podría saturarlo con peticiones y agotar la cuota diaria gratuita de Google (la app seguiría funcionando en local y sincronizaría al día siguiente), pero no leer ni borrar datos.

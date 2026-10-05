@@ -1,0 +1,104 @@
+// Buscador de alimentos, «mis platos» e IA fuera de Claude (foto, calcular con IA y asistente) a través del servidor.
+// Uso: node pruebas/ia.test.mjs <carpeta construida con ELITEPRO_NUBE_URL=/api>
+import { spawn } from 'node:child_process';
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const dir = process.argv[2], port = 8796, base = 'http://localhost:' + port;
+const srv = spawn('node', [new URL('./servidor_prueba.mjs', import.meta.url).pathname, dir, String(port)], { stdio: 'ignore' });
+await new Promise(r => setTimeout(r, 800));
+const b = await chromium.launch(); const errs = []; let fails = 0;
+const ok = (n, c, x = '') => { console.log((c ? 'OK    ' : 'FALLA ') + n + (c ? '' : '  → ' + x)); if (!c) fails++; };
+const mk = async () => { const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage(); p.on('pageerror', e => errs.push('PAGEERROR ' + e.message)); return p; };
+const T = async (p, sel) => (await p.textContent(sel)).replace(/\s+/g, ' ').trim();
+const get = async u => (await fetch(base + u)).text(), dump = async () => JSON.parse(await get('/__dump'));
+const go = async (p, h) => { await p.evaluate(x => { location.hash = x; }, h); await p.waitForTimeout(250); };
+const settle = async (p, ms = 3600) => { await p.waitForTimeout(ms); await p.waitForFunction(() => !/Sincronizando/.test((document.querySelector('#cl-chip') || {}).textContent || ''), null, { timeout: 20000 }); };
+const syncNow = async p => { await go(p, '#datos'); await p.click('[data-cl="sync"]'); await settle(p, 900); };
+const closed = p => p.waitForFunction(() => !document.querySelector('#sh-cloud').open, null, { timeout: 30000 });
+const profile = async (p, name, w, cond) => { await p.goto(base + '/'); await p.waitForTimeout(400); await p.click('#v-need a'); await p.waitForTimeout(200); await p.fill('#p-name', name); await p.fill('#p-age', '35'); await p.fill('#p-height', '167'); await p.fill('#p-weight', String(w)); await p.selectOption('#p-plan', 'dia'); if (cond) await p.selectOption('#h-cond', cond); await p.click('#p-form button[type=submit]'); await p.waitForTimeout(400); };
+const addMeal = async (p, name, g) => { await go(p, '#hoy'); await p.click('#nut-card [data-sheet="meal"]'); await p.waitForTimeout(200); await p.click('#f-manual'); await p.fill('#f-name', name); await p.fill('#f-g', String(g)); await p.waitForTimeout(100); await p.click('#f-submit'); await p.waitForTimeout(300); };
+const weigh = async (p, w) => { await go(p, '#hoy'); await p.click('#peso-card [data-sheet="peso"]'); await p.waitForTimeout(200); await p.fill('#w-val', w); await p.click('#w-form button[type=submit]'); await p.waitForTimeout(300); };
+const login = async (p, mail, pass, from = '#cloud-card [data-cl="login"]') => { await p.click(from); await p.waitForTimeout(200); await p.fill('#cl-email', mail); await p.fill('#cl-pass', pass); await p.click('#cl-go'); await closed(p); await settle(p, 700); };
+const local = p => p.evaluate(() => JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k => k.startsWith('platoypista:v1:u:')))));
+const meals = o => Object.values(o.days).reduce((n, x) => n + x.meals.length, 0), wts = o => Object.values(o.days).map(x => x.weight).filter(Boolean).join();
+import fs from 'node:fs';
+const png = dir + '/_plato.png'; fs.writeFileSync(png, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'));
+const ai = q => get('/__ai?' + q), sent = async () => (await dump()).stats.ai;
+const openMeal = async (p, slot) => { await go(p, '#hoy'); await p.click('#nut-card [data-sheet="meal"]'); await p.waitForTimeout(200); await p.click('#f-manual'); if (slot) await p.selectOption('#f-slot', slot); };
+try {
+  const C = await mk(); await C.goto(base + '/panel.html'); await C.waitForSelector('#v-setup:not([hidden])'); await C.fill('#s-code', await get('/__setup')); await C.fill('#s-pass', 'entrenador-clave-1'); await C.fill('#s-pass2', 'entrenador-clave-1'); await C.click('#f-setup button[type=submit]'); await C.waitForSelector('#v-app:not([hidden])', { timeout: 30000 });
+  await C.click('#inv-new'); await C.waitForTimeout(500); const codes = await C.$$eval('#invites code', e => e.map(x => x.textContent));
+  const A = await mk(); await profile(A, 'Tania', 60, 'dm2');
+  // ---- buscador dentro del formulario
+  await openMeal(A, 'com'); await A.fill('#f-name', 'paella'); await A.waitForTimeout(150);
+  ok('buscar «paella»: salen sugerencias de platos', /Paella mixta/.test(await T(A, '#f-sug')) && await A.isVisible('#f-sug'));
+  await A.click('#f-sug [data-food="Paella mixta"]'); await A.waitForTimeout(150);
+  ok('elegir una sugerencia rellena ración y calorías (350 g = 560 kcal)', await A.inputValue('#f-name') === 'Paella mixta' && await A.inputValue('#f-g') === '350' && await A.inputValue('#f-kcal') === '560' && !(await A.isVisible('#f-sug')), await A.inputValue('#f-kcal'));
+  ok('un alimento de la lista no ofrece guardarse como plato propio', !(await A.isVisible('#f-keep-box')));
+  await A.fill('#f-name', 'platano'); await A.waitForTimeout(150); ok('busca sin tildes: «platano» encuentra Plátano y lo reconoce', /Plátano/.test(await T(A, '#f-sug')) && Number(await A.inputValue('#f-kcal')) > 0);
+  await A.fill('#f-name', 'arroz pollo'); await A.waitForTimeout(150); ok('busca por varias palabras en cualquier orden', /Arroz con pollo/.test(await T(A, '#f-sug')) && /Pollo con arroz y verduras/.test(await T(A, '#f-sug')));
+  ok('hay más de 300 alimentos y platos', await A.evaluate(() => { document.querySelector('#f-name').value = 'a'; document.querySelector('#f-name').dispatchEvent(new Event('input')); return document.querySelectorAll('#f-sug button').length; }) === 8);
+  // ---- mi plato: se recuerda y se reconoce
+  await A.fill('#f-name', 'Bowl de Tania'); await A.fill('#f-g', '300'); await A.fill('#f-kcal', '500'); await A.fill('#f-p', '30'); await A.fill('#f-c', '60'); await A.fill('#f-f', '15'); await A.waitForTimeout(150);
+  ok('plato que no está en la lista: avisa y ofrece recordarlo', /Recordar este plato/.test(await T(A, '#f-keep-box')) && await A.isChecked('#f-keep'));
+  await A.click('#f-submit'); await A.waitForTimeout(400); let L = await local(A);
+  ok('al añadirlo queda en «mis platos»', (L.profile.foods || []).length === 1 && L.profile.foods[0].name === 'Bowl de Tania' && L.profile.foods[0].kcal === 500 && meals(L) === 1, JSON.stringify(L.profile.foods));
+  await openMeal(A, 'cen'); await A.fill('#f-name', 'bowl'); await A.waitForTimeout(150);
+  ok('al buscarlo sale marcado como «Tuyo»', /Bowl de Tania\s*Tuyo/.test(await T(A, '#f-sug')), await T(A, '#f-sug'));
+  await A.click('#f-sug [data-food="Bowl de Tania"]'); await A.waitForTimeout(150);
+  ok('…y se rellena solo con sus valores (300 g, 500 kcal)', await A.inputValue('#f-g') === '300' && await A.inputValue('#f-kcal') === '500' && await A.inputValue('#f-p') === '30' && !(await A.isVisible('#f-keep-box')));
+  await A.fill('#f-g', '150'); await A.waitForTimeout(150); ok('…y se ajusta a los gramos (150 g = 250 kcal)', await A.inputValue('#f-kcal') === '250');
+  await A.click('#f-more'); await A.waitForTimeout(300); await A.fill('#f-name', 'Manzana'); await A.waitForTimeout(150); await A.click('#f-more'); await A.waitForTimeout(300);
+  ok('con dos cosas en la cena se pueden guardar juntas como un plato', /Guardar todo esto como un plato mío/.test(await T(A, '#f-list')));
+  await A.click('#f-list summary'); await A.fill('#f-combo-n', 'Mi cena rápida'); await A.click('#f-combo-ok'); await A.waitForTimeout(300); L = await local(A);
+  const combo = (L.profile.foods || []).find(f => f.name === 'Mi cena rápida');
+  ok('el plato combinado suma sus ingredientes (250 + 94 kcal, 330 g)', !!combo && combo.kcal === 344 && combo.g === 330, JSON.stringify(combo));
+  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  await A.click('#nut-card [data-sheet="calc"]'); await A.waitForTimeout(200); await A.fill('#c-q', 'mi cena');
+  ok('«Buscar en la lista» también enseña los platos propios', /Mi cena rápida\s*Tuyo/.test(await T(A, '#c-tbl')));
+  await A.click('#c-tbl [data-del-food]'); await A.waitForTimeout(300); L = await local(A);
+  ok('…y se pueden quitar', L.profile.foods.length === 1 && L.profile.foods[0].name === 'Bowl de Tania');
+  await A.keyboard.press('Escape');
+  // ---- IA: sin cuenta no hay; con cuenta y clave en el servidor, sí
+  await go(A, '#hoy'); ok('sin cuenta: no hay asistente y la IA pide entrar', !(await A.isVisible('.aibar')));
+  await A.click('#nut-card [data-sheet="meal"]'); await A.waitForTimeout(200); await A.click('#f-ai'); ok('…«Calcular con IA» dice que hace falta la cuenta', /entra en tu cuenta/.test(await T(A, '#f-msg')) && /Con tu cuenta en la nube/.test(await T(A, '#f-choices')), await T(A, '#f-msg')); await A.keyboard.press('Escape');
+  await ai('key=sk-prueba-9');
+  await go(A, '#datos'); await A.click('#cloud-card [data-cl="register"]'); await A.waitForTimeout(200); await A.fill('#cl-email', 'tania@ejemplo.com'); await A.fill('#cl-pass', 'clave-de-tania-1'); await A.fill('#cl-pass2', 'clave-de-tania-1'); await A.fill('#cl-inv', codes[0]); await A.check('#cl-terms'); await A.check('#cl-hc'); await A.click('#cl-go'); await closed(A); await settle(A, 700);
+  await go(A, '#hoy'); ok('con la cuenta abierta aparece el asistente', await A.isVisible('.aibar'));
+  // calcular con IA: primero el aviso, luego los datos
+  await A.click('#nut-card [data-sheet="meal"]'); await A.waitForTimeout(200);
+  ok('la hoja de comida ya no dice «solo dentro de Claude»', !(await A.isVisible('#f-choices .only')));
+  await A.click('#f-manual'); await A.fill('#f-name', '2 huevos revueltos con tostada'); await A.click('#f-ai'); await A.waitForSelector('#ai-ok[open]');
+  ok('la primera vez sale el aviso de a quién se envían los datos', /Anthropic/.test(await T(A, '#ai-ok')) && /No se envían/.test(await T(A, '#ai-ok')));
+  await A.click('#ai-ok-no'); await A.waitForTimeout(300); ok('si no se acepta, no sale nada del dispositivo', (await sent()).length === 0 && /aceptes el aviso/.test(await T(A, '#f-msg')), await T(A, '#f-msg'));
+  await A.click('#f-ai'); await A.waitForSelector('#ai-ok[open]'); await A.click('#ai-ok-yes'); await A.waitForFunction(() => document.querySelector('#f-kcal').value === '450', null, { timeout: 30000 });
+  ok('Calcular con IA rellena la comida con lo que contesta el modelo', await A.inputValue('#f-name') === 'Plato de prueba' && await A.inputValue('#f-p') === '30');
+  let S1 = await sent(); ok('la petición lleva lo escrito y no lleva nombre, correo ni datos de salud', S1.length === 1 && /2 huevos revueltos/.test(JSON.stringify(S1[0].body)) && !/tania|diabet|dm2|glucosa/i.test(JSON.stringify(S1[0].body)), JSON.stringify(S1[0].body).slice(0, 200));
+  await A.setInputFiles('#f-photo', png); await A.waitForFunction(async () => true); await A.waitForTimeout(1500); S1 = await sent();
+  ok('la foto del plato se envía reducida en JPEG y sin volver a pedir el aviso', S1.length === 2 && S1[1].body.messages[0].content[0].type === 'image' && S1[1].body.messages[0].content[0].source.media_type === 'image/jpeg' && S1[1].body.messages[0].content[0].source.data.length > 100);
+  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
+  // asistente: entiende, contesta y apunta comida y entreno
+  await ai('text=' + encodeURIComponent(JSON.stringify({ reply: 'Apuntado el desayuno y la carrera. Te quedan unas 1.200 kcal.', actions: [{ type: 'meal', slot: 'des', name: 'Tostadas con aguacate', g: 150, kcal: 320, p: 8, c: 30, f: 18 }, { type: 'act', sport: 'carrera', min: 45, km: 8, kcal: 0, title: 'Rodaje' }, { type: 'act', sport: 'volar', min: 30 }, { type: 'meal', name: 'x', kcal: 99999 }] })));
+  const before = meals(await local(A));
+  await A.click('.aibar'); await A.waitForTimeout(250); ok('se abre el asistente con su saludo y atajos', /Cuéntame qué has comido/.test(await T(A, '#ai-log')) && await A.isVisible('#ai-tips') && await A.isVisible('#ai-form .ai-img'));
+  await A.fill('#ai-in', 'he desayunado tostadas con aguacate y he corrido 8 km en 45 min'); await A.click('#ai-send'); await A.waitForSelector('#ai-log .aidone', { timeout: 30000 }); L = await local(A);
+  const dayNow = Object.values(L.days).find(d => (d.acts || []).length);
+  ok('el asistente contesta y apunta la comida y el entreno', /Apuntado el desayuno/.test(await T(A, '#ai-log')) && await A.locator('#ai-log .aidone').count() === 2 && meals(L) === before + 1 && !!dayNow && dayNow.acts[0].type === 'carrera' && dayNow.acts[0].km === 8 && dayNow.acts[0].src === 'ia', await T(A, '#ai-log'));
+  ok('lo que no vale (deporte inventado, calorías imposibles) no se apunta', dayNow.acts.length === 1 && !JSON.stringify(L.days).includes('99999'));
+  S1 = await sent(); const pr = JSON.stringify(S1.at(-1).body);
+  ok('el asistente recibe el contexto del día y los platos propios, pero no la salud', /Objetivo de hoy/.test(pr) && /Bowl de Tania/.test(pr) && /he corrido 8 km/.test(pr) && !/diabet|dm2|glucosa|tania@/i.test(pr), pr.slice(0, 300));
+  await A.click('#ai-log [data-ai-undo="1:0"]'); await A.waitForTimeout(300); L = await local(A);
+  ok('«Deshacer» quita lo apuntado', meals(L) === before && /deshecho/.test(await T(A, '#ai-log')));
+  await ai('text=' + encodeURIComponent('{"reply": "Vas bien: te faltan 40 g de proteína.", "actions": []}'));
+  await A.fill('#ai-in', '¿cómo voy?'); await A.keyboard.press('Enter'); await A.waitForFunction(() => /te faltan 40 g/.test(document.querySelector('#ai-log').textContent), null, { timeout: 30000 });
+  ok('también contesta preguntas sin apuntar nada y recuerda la conversación', (await A.locator('#ai-log .aidone').count()) === 2 && /Conversación hasta ahora/.test(JSON.stringify((await sent()).at(-1).body)));
+  await A.keyboard.press('Escape'); await go(A, '#hoy');
+  ok('Hoy enseña el entreno apuntado por el asistente', /apuntado por el asistente/.test(await T(A, '#d-sess')), (await T(A, '#d-sess')).slice(0, 200));
+  await settle(A); await C.click('#reload'); await C.waitForTimeout(500); await C.click('[data-see]'); await C.waitForSelector('#detail table', { timeout: 20000 });
+  ok('lo apuntado por el asistente se sincroniza como lo demás', /Carrera|carrera/.test(await T(C, '#detail')), (await T(C, '#detail')).slice(-300));
+  // límite diario y cierre de sesión
+  await ai('max=1'); await A.click('.aibar'); await A.waitForTimeout(200); await A.fill('#ai-in', 'otra cosa'); await A.click('#ai-send'); await A.waitForFunction(() => /límite de usos/.test(document.querySelector('#ai-log').textContent), null, { timeout: 30000 });
+  ok('al llegar al límite diario lo dice claro', true); await ai('max=60'); await A.keyboard.press('Escape');
+  await go(A, '#datos'); await A.click('[data-cl="logout"]'); await A.waitForTimeout(300); await go(A, '#hoy');
+  ok('al cerrar sesión la IA se apaga', !(await A.isVisible('.aibar')));
+} catch (e) { console.log('ERROR ' + e.message.split('\n').slice(0, 3).join(' | ')); fails++; } finally { await b.close(); srv.kill(); }
+console.log(errs.length ? [...new Set(errs)].join('\n') : 'sin errores de script'); console.log(fails ? '\n' + fails + ' fallos' : '\ntodo bien'); process.exit(fails ? 1 : 0);

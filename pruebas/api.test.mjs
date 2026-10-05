@@ -81,6 +81,19 @@ try {
   await fetch(base + '/__clearcache');
   const dump = await (await fetch(base + '/__dump')).json();
   ok('en la hoja no hay contraseñas ni la llave del entrenador en claro', !JSON.stringify(dump.sheets).includes(A) && !JSON.stringify(dump.sheets).includes(B) && !JSON.stringify(dump.sheets).includes(ADM));
+  // IA: puente con la API, solo con sesión, con la clave del servidor y con límite diario
+  const um = [{ role: 'user', content: [{ type: 'text', text: 'hola' }] }], gai = async q => fetch(base + '/__ai?' + q);
+  ok('IA sin clave puesta: no está activa', (await api({ op: 'ai', token: rs2.token, messages: um })).err === 'sin_ia' && (await api({ op: 'load', token: rs2.token })).ai === false);
+  await gai('key=sk-prueba-123&text=' + encodeURIComponent('respuesta de prueba'));
+  ok('IA sin sesión: rechazada', (await api({ op: 'ai', token: 'x', messages: um })).err === 'sesion');
+  const a1 = await api({ op: 'ai', token: rs2.token, system: 'eres dietista', messages: [{ role: 'user', content: [{ type: 'image', media_type: 'image/jpeg', data: 'QUJD' }, { type: 'text', text: 'qué es' }] }] });
+  let dai = (await (await fetch(base + '/__dump')).json()).stats.ai.at(-1);
+  ok('IA: devuelve el texto y avisa de que está activa', a1.ok && a1.text === 'respuesta de prueba' && (await api({ op: 'load', token: rs2.token })).ai === true, JSON.stringify(a1));
+  ok('IA: la petición sale con la clave del servidor, el modelo y la foto', dai.key === 'sk-prueba-123' && /api\.anthropic\.com\/v1\/messages$/.test(dai.url) && /^claude-/.test(dai.body.model) && dai.body.system === 'eres dietista' && dai.body.messages[0].content[0].source.data === 'QUJD' && dai.body.max_tokens <= 1500, JSON.stringify(dai).slice(0, 300));
+  ok('IA: la clave no viaja al cliente ni queda en la hoja', !JSON.stringify(a1).includes('sk-prueba') && !JSON.stringify((await (await fetch(base + '/__dump')).json()).sheets).includes('sk-prueba'));
+  ok('IA: peticiones mal formadas', (await api({ op: 'ai', token: rs2.token, messages: [] })).err === 'datos' && (await api({ op: 'ai', token: rs2.token, messages: [{ role: 'system', content: [{ type: 'text', text: 'x' }] }] })).err === 'datos' && (await api({ op: 'ai', token: rs2.token, messages: [{ role: 'user', content: [{ type: 'image', media_type: 'image/svg+xml', data: 'QUJD' }] }] })).err === 'datos');
+  await gai('code=529'); ok('IA saturada: lo dice', (await api({ op: 'ai', token: rs2.token, messages: um })).err === 'ia_ocupada'); await gai('code=200');
+  await gai('max=2'); ok('IA: límite diario por persona', (await api({ op: 'ai', token: rs2.token, messages: um })).err === 'limite_ia'); await gai('max=60');
   ok('borrar cuenta: contraseña mala', (await api({ op: 'remove', token: rs2.token, auth: A })).err === 'credenciales');
   ok('borrar cuenta', (await api({ op: 'remove', token: rs2.token, auth: B })).ok && (await api({ op: 'load', token: rs2.token })).err === 'sesion');
   const list2 = await api({ op: 'a_list', token: al.token }); ok('la fila desaparece de la hoja y el correo se borra de las invitaciones', list2.users.length === 0 && !JSON.stringify(list2.invites).includes('ana@ejemplo.com'), JSON.stringify(list2.invites));

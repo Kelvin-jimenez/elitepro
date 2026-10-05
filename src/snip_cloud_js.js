@@ -74,7 +74,7 @@ async function cSync(pull, remote) {
   const flag = r => { if (me.hd || typeof r.health !== "boolean" || r.health === !!me.health) return false; me.health = r.health; if (!r.health) me.base.h = cEmpty().h; return r.health; };
   try {
     const dek = EPC.unb64(me.dek); let adopt = false, done = false;
-    if (!remote && pull) { const r = await EPC.api(CLOUD_URL, { op: "load", token: me.token }); if (r.ckid && r.ckid !== me.kid) me.rewrap = true; if (r.rev !== me.rev) remote = r; }
+    if (!remote && pull) { const r = await EPC.api(CLOUD_URL, { op: "load", token: me.token }); if (r.ckid && r.ckid !== me.kid) me.rewrap = true; if (typeof r.ai === "boolean" && r.ai !== !!me.ai) { me.ai = r.ai; put(); } if (r.rev !== me.rev) remote = r; }
     for (let i = 0; i < 6 && !done; i++) {
       if (remote) {
         adopt = flag(remote) || adopt || !!me.adopt;
@@ -119,7 +119,7 @@ $("#v-hoy .dash").insertAdjacentHTML("beforebegin", `<div class="card" id="cl-ct
 function cCta() { let off = false; try { off = localStorage.getItem("elitepro:cta:" + users.current) === "1"; } catch (e) { off = false; } $("#cl-cta").hidden = cOn() || off || !S.profile || S.mode !== "local"; }
 $("#cl-cta-x").addEventListener("click", () => { try { localStorage.setItem("elitepro:cta:" + users.current, "1"); } catch (e) { /* sin almacenamiento */ } $("#cl-cta").hidden = true; });
 function cSet(st) {
-  cCta();
+  cCta(); cAi();
   cState = st; const chip = $("#cl-chip"), body = $("#cl-body"); if (!body) return;
   const on = !!(cs && cs.token), bad = st === "err" || st === "llave";
   chip.hidden = !cOn(); chip.textContent = !cOn() ? "" : st === "sync" ? "Sincronizando" : st === "llave" ? "En pausa" : st === "err" ? "Sin conexión" : !on ? "Sesión caducada" : "Conectada"; chip.className = "chip" + (on && !bad ? " done" : "");
@@ -170,7 +170,7 @@ document.addEventListener("click", e => {
   const a = t.dataset.cl;
   if (a === "sync") return cSync(true);
   if (a === "logout") { // se quitan la sesión y la llave; queda la marca de lo ya sincronizado para juntar bien si vuelve a entrar con la misma cuenta
-    clearTimeout(cT); cs = { uid: cs.uid, email: cs.email, out: true, rev: cs.rev, base: cs.base, health: cs.health, kid: cs.kid }; cStore(); cSet(""); cNote();
+    clearTimeout(cT); cs = { uid: cs.uid, email: cs.email, out: true, rev: cs.rev, base: cs.base, health: cs.health, kid: cs.kid, aiok: cs.aiok }; cStore(); cSet(""); cNote();
     return toast("Sesión cerrada. Tus datos siguen en este dispositivo.");
   }
   if (a === "reset1") { const typed = cMode === "login" && $("#cl-email") ? $("#cl-email").value.trim().toLowerCase() : ""; cRst = cs && cs.token ? cs.email : typed || cRst || (cs && cs.email) || ""; }
@@ -200,12 +200,12 @@ $("#cl-form").addEventListener("submit", async e => {
       const keep = cKey(email);
       if (keep) { // este dispositivo tiene la llave: se vuelve a guardar protegida con la contraseña nueva y los datos siguen como estaban
         const r = await EPC.api(CLOUD_URL, { op: "reset_do", email, code, auth: k.auth, wrapUser: EPC.b64(await EPC.enc(k.kek, EPC.unb64(keep.dek))) });
-        keep.token = r.token; cStore(keep);
+        keep.token = r.token; keep.ai = !!r.ai; cStore(keep);
         if (cs === keep) { closeSheets(); cSet("ok"); cNote(); cSync(true); }
       } else { // sin la llave, lo de la nube no se puede abrir: la cuenta empieza de nuevo con lo que hay aquí (la salud, solo si se vuelve a consentir)
         const pub = await cPub(), dek = EPC.rand(32), me = { uid: users.current, email, token: "", dek: EPC.b64(dek), rev: 0, base: cEmpty(), health: false, kid: pub.kid }, snap = cSnap(me);
         const r = await EPC.api(CLOUD_URL, { op: "reset_do", email, code, auth: k.auth, wrapUser: EPC.b64(await EPC.enc(k.kek, dek)), wrapCoach: await EPC.wrapFor(pub.pub, dek), kid: pub.kid, blob: await EPC.seal(dek, snap) });
-        me.token = r.token; me.rev = r.rev; me.base = cHashes(me, snap); me.at = Date.now();
+        me.token = r.token; me.rev = r.rev; me.base = cHashes(me, snap); me.at = Date.now(); me.ai = !!r.ai;
         cs = me; csFor = me.uid; cStore(); closeSheets(); cSet("ok"); cNote();
       }
       cRst = ""; toast("Contraseña cambiada. En tus otros dispositivos tendrás que volver a entrar.");
@@ -214,14 +214,14 @@ $("#cl-form").addEventListener("submit", async e => {
       const me = { uid: users.current, email, token: "", dek: EPC.b64(dek), rev: 0, base: cEmpty(), health: $("#cl-hc").checked, kid: pub.kid };
       const snap = cSnap(me);
       const r = await EPC.api(CLOUD_URL, { op: "register", email, auth: k.auth, invite: val("cl-inv").trim(), consent: { adult: true, terms: $("#cl-terms").checked, health: me.health }, wrapUser: EPC.b64(await EPC.enc(k.kek, dek)), wrapCoach: await EPC.wrapFor(pub.pub, dek), kid: pub.kid, blob: await EPC.seal(dek, snap) });
-      me.token = r.token; me.at = Date.now();
+      me.token = r.token; me.at = Date.now(); me.ai = !!r.ai;
       if (r.existing) { me.rev = -1; me.base = cEmpty(); me.fresh = true; } else { me.rev = r.rev; me.base = cHashes(me, snap); } // `existing`: el registro ya había entrado en un intento anterior
       cs = me; csFor = me.uid; cStore();
       closeSheets(); cSet("ok"); cNote(); toast("Cuenta creada. Tus datos ya se guardan en la nube."); if (r.existing) cSync(true); else cTouch();
     } else if (cMode === "login") {
       const r = await EPC.api(CLOUD_URL, { op: "login", email, auth: k.auth }), dek = await EPC.dec(k.kek, EPC.unb64(r.wrapUser));
       const old = cs && cs.email === email ? cs : null;
-      cs = { uid: users.current, email, token: r.token, dek: EPC.b64(dek), rev: old ? old.rev : -1, base: old ? old.base : cEmpty(), health: !!r.health, adopt: !old && !!r.health, fresh: !old || !!old.fresh, kid: r.kid, rewrap: !!(r.ckid && r.ckid !== r.kid) }; csFor = cs.uid; cStore();
+      cs = { uid: users.current, email, token: r.token, dek: EPC.b64(dek), rev: old ? old.rev : -1, base: old ? old.base : cEmpty(), health: !!r.health, adopt: !old && !!r.health, fresh: !old || !!old.fresh, ai: !!r.ai, aiok: !!(old && old.aiok), kid: r.kid, rewrap: !!(r.ckid && r.ckid !== r.kid) }; csFor = cs.uid; cStore();
       closeSheets(); cNote(); await cSync(true, r);
       toast("Dentro. Tus datos están al día con la nube."); if (S.profile && S.tab === "hoy") render(); else if (S.profile) location.hash = "#hoy";
     } else if (cMode === "passwd") {
@@ -237,6 +237,61 @@ $("#cl-form").addEventListener("submit", async e => {
     say(err && err.name === "OperationError" ? "Correo o contraseña incorrectos." : cMsg(err), true);
   } finally { const g = $("#cl-go"); if (g) g.disabled = false; }
 });
+/* ---------- IA fuera de Claude: con la sesión abierta, la foto del plato, «Calcular con IA» y el asistente pasan por el servidor de Elitepro,
+   que guarda la clave de la API. No se envían datos de salud. La primera vez se pide aceptar un aviso. ---------- */
+AIMSG.photo = AIMSG.calc = "Para usar la IA entra en tu cuenta: Perfil → Cuenta en la nube.";
+document.querySelectorAll("#sh-meal .only").forEach(el => { el.textContent = "Con tu cuenta en la nube"; });
+document.body.insertAdjacentHTML("beforeend", `<dialog id="ai-ok" class="sheet" aria-labelledby="ai-ok-t" style="z-index:50"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="ai-ok-t">Antes de usar la IA</h2></div>
+  <p class="sub">La inteligencia artificial la da Anthropic (Claude). Para contestarte, lo que escribas, las fotos que mandes, tus datos básicos (edad, peso, altura y objetivo) y un resumen de tus comidas y entrenos de la semana se envían a su servicio, que puede estar fuera de la Unión Europea. Elitepro no guarda esas conversaciones.</p>
+  <p class="sub"><b>No se envían</b> tu nombre, tu correo ni tus datos de salud (condición, glucosa, lesiones, medicación). No escribas ni fotografíes datos de salud u otras cosas que no quieras compartir. Lo que calcula son estimaciones, no consejo médico. Más en la <a href="privacidad.html" target="_blank" rel="noopener" style="color:var(--ink)">política de privacidad</a>.</p>
+  <div class="row actions"><button class="btn" type="button" id="ai-ok-yes">Entendido, usar la IA</button><button class="btn ghost" type="button" id="ai-ok-no">Ahora no</button></div>
+</div></dialog>`);
+function aiAsk() {
+  return new Promise(res => {
+    const d = $("#ai-ok"); let ans = false;
+    $("#ai-ok-yes").onclick = () => { ans = true; d.close(); }; $("#ai-ok-no").onclick = () => d.close();
+    d.addEventListener("close", () => res(ans), { once: true }); // también si se cierra de otra forma: cuenta como «ahora no»
+    d.showModal();
+  });
+}
+const aiErr = code => Object.assign(new Error(code), { code });
+/* Las fotos se reducen antes de enviarlas: 1280 px de lado mayor, en JPEG */
+async function aiShrink(file) {
+  let bmp; try { bmp = await createImageBitmap(file); } catch (e) { throw aiErr("image_rejected"); }
+  const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); if (bmp.close) bmp.close();
+  return { type: "image", media_type: "image/jpeg", data: c.toDataURL("image/jpeg", 0.82).split(",")[1] };
+}
+async function aiCall(prompt, o) {
+  const me = cs; if (!me || !me.token) throw aiErr("session_expired");
+  if (!me.aiok) { if (!(await aiAsk())) throw aiErr("need_ok"); me.aiok = true; if (cs === me) cStore(me); }
+  const content = []; for (const f of [].concat((o && o.images) || [])) content.push(await aiShrink(f));
+  content.push({ type: "text", text: String(prompt).slice(0, 19000) });
+  try { return (await EPC.api(CLOUD_URL, { op: "ai", token: me.token, messages: [{ role: "user", content }], max: 1100 }, 90000)).text; }
+  catch (e) {
+    const c = e && e.code;
+    if (c === "sesion") { me.token = ""; if (cs === me) { cStore(me); cSet("login"); cNote(); } throw aiErr("session_expired"); }
+    if (c === "sin_ia") { me.ai = false; if (cs === me) cStore(me); throw aiErr("capability_disabled"); }
+    throw aiErr(c === "limite_ia" ? "rate_limited" : c === "ia_ocupada" ? "busy" : c === "datos" && content.length > 1 ? "image_rejected" : "red");
+  }
+}
+const webSample = Object.assign(async (prompt, o) => { const text = await aiCall(prompt, o); if (o && o.onText) o.onText({ text }); return { text }; }, {
+  web: true,
+  limits: async () => ({ images: true }),
+  json: async (prompt, o) => {
+    const t = await aiCall(prompt, o), a = t.indexOf("{"), b = t.lastIndexOf("}");
+    try { return JSON.parse(t.slice(a, b + 1)); } catch (e) { throw aiErr("invalid_json"); }
+  }
+});
+AIERR.rate_limited = "Has llegado al límite de usos de la IA por hoy. Mañana vuelve a estar disponible.";
+const closeAi = () => { const d = $("#sh-ai"); if (d && d.open) d.close(); };
+/* La IA se enciende y se apaga con la sesión (y solo si el servidor tiene la clave puesta) */
+function cAi() {
+  const on = !!(cs && cs.token && cs.ai);
+  if (on && !sample) { sample = webSample; canImg = true; showAi(); if (S.tab === "hoy" && S.profile) render(); }
+  else if (!on && sample && sample.web) { sample = null; canImg = false; showAi(); closeAi(); if (S.tab === "hoy" && S.profile) render(); }
+}
 /* «Empezar de cero» borra lo de este dispositivo, no la cuenta: antes de borrar se desconecta, para que el vaciado no se suba a la nube */
 document.addEventListener("click", e => {
   if (!e.target || e.target.id !== "rs-yes" || !cs) return;

@@ -167,6 +167,29 @@ dl.kv .over dd{color:var(--crit)}
 .mlist ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .mlist li{display:flex;justify-content:space-between;gap:10px;font-size:.92rem;color:var(--ink-2)}
 .mlist .mtot{border-top:1px solid var(--line);padding-top:7px;font-size:.92rem;color:var(--ink)}
+.mlist details summary{cursor:pointer;font-size:.9rem;color:var(--ink);text-decoration:underline;padding:4px 0}
+.mlist details .row{margin-top:8px}.mlist details input{flex:1 1 180px}
+.aibar{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px;min-height:48px;color:var(--ink-2);font:inherit;font-size:.95rem;cursor:pointer}
+.aibar[hidden]{display:none}.aibar b{color:var(--ink)}.aibar svg{flex:0 0 auto;width:22px;height:22px;fill:none;stroke:var(--mark);stroke-width:2;stroke-linejoin:round}
+.aibar:hover{border-color:color-mix(in srgb,var(--mark) 65%,var(--line))}
+.ailog{display:flex;flex-direction:column;gap:10px;max-height:46vh;min-height:120px;overflow-y:auto;padding:2px}
+.aimsg{max-width:88%;border-radius:14px;padding:10px 14px;font-size:.95rem;line-height:1.45;display:flex;flex-direction:column;gap:8px}
+.aimsg p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.aimsg.ia{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);color:var(--ink)}
+.aimsg.yo{align-self:flex-end;background:var(--btn);color:var(--on-btn)}
+.aimsg.err{border-color:var(--crit)}
+.aidone{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:8px;font-size:.88rem}
+.aidone span::before{content:"✓ ";color:var(--good);font-weight:700}.aidone.off span{text-decoration:line-through;color:var(--muted)}.aidone.off span::before{content:""}
+.aiform{display:flex;gap:8px;align-items:flex-end}
+.aiform textarea{flex:1 1 auto;min-width:0;resize:none;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:48px;color:var(--ink);font:inherit}
+.aiform textarea:focus{outline:0;border-color:var(--mark)}.aiform .icon-btn{flex:0 0 auto;width:48px;height:48px;display:grid;place-items:center}.aiform .icon-btn[hidden]{display:none}
+.sug{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-2)}
+.sug button{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;padding:8px 14px;background:none;border:0;border-top:1px solid var(--line);color:var(--ink);font:inherit;font-size:.95rem;text-align:left;cursor:pointer}
+.sug button:first-child{border-top:0}.sug button:hover,.sug button:focus-visible{background:color-mix(in srgb,var(--mark) 14%,transparent);outline:0}
+.sug .num{flex:0 0 auto;font-size:.82rem;color:var(--muted);white-space:nowrap}
+.sug p{margin:0;padding:10px 14px;font-size:.88rem;color:var(--muted)}
+.mine{display:inline-block;font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;color:var(--muted);vertical-align:middle}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;color:var(--ink-2);line-height:1.4;cursor:pointer}.chk input{width:20px;height:20px;flex:0 0 auto;margin-top:1px;accent-color:var(--mark)}
 #diet-card{grid-column:1 / -1}
 .dslot{border-top:1px solid var(--line);padding-top:10px}
 .dslot-h{display:flex;align-items:center;gap:10px}.dslot-h b{flex:1 1 auto}
@@ -370,6 +393,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
     <!-- HOY: panel primero, formularios bajo demanda -->
     <section id="v-hoy" class="view" hidden>
       <div id="d-nav" class="pagehead"></div>
+      <button class="aibar ai" type="button" data-sheet="ai" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg><span><b>Asistente</b> · cuéntame qué has comido o entrenado y lo apunto</span></button>
       <div class="dash">
         <div id="d-label" class="card hero-card"></div>
         <div id="d-macros"></div>
@@ -605,6 +629,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
 <dialog class="sheet" id="sh-quick" aria-labelledby="sh-quick-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-quick-t">Registrar</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div class="choices">
+    <button class="choice ai" type="button" data-sheet="ai" hidden>Contárselo al asistente<small class="hint">Escribe o manda una foto</small></button>
     <button class="choice main" type="button" data-quick="meal">Añadir comida</button>
     <button class="choice" type="button" data-quick="act">Registrar entrenamiento</button>
     <button class="choice" type="button" data-quick="peso">Registrar peso</button>
@@ -626,10 +651,10 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
       <div id="f-list" class="mlist" hidden></div>
       <div class="row">
         <label class="fld mid">Momento<select id="f-slot"></select></label>
-        <label class="fld wide">Qué has comido<input id="f-name" type="text" list="foods" placeholder="Pollo con arroz, o elige de la lista"></label>
+        <label class="fld wide">Qué has comido<input id="f-name" type="text" placeholder="Busca o escribe: pollo, paella, mi desayuno…" aria-controls="f-sug" aria-autocomplete="list"></label>
         <label class="fld">Gramos<input id="f-g" type="text" inputmode="decimal" placeholder="150"></label>
       </div>
-      <datalist id="foods"></datalist>
+      <div id="f-sug" class="sug" role="listbox" aria-label="Alimentos y platos que coinciden" hidden></div>
       <div class="four">
         <label class="fld">Kcal<input id="f-kcal" type="text" inputmode="decimal"></label>
         <label class="fld">Proteína (g)<input id="f-p" type="text" inputmode="decimal"></label>
@@ -640,16 +665,33 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
         <label class="fld">Azúcares (g)<input id="f-az" type="text" inputmode="decimal"></label>
         <label class="fld">Fibra (g)<input id="f-fi" type="text" inputmode="decimal"></label>
       </div>
+      <label class="chk" id="f-keep-box" hidden><input type="checkbox" id="f-keep" checked><span id="f-keep-t"></span></label>
       <div class="row actions"><button class="btn" type="submit" id="f-submit">Añadir</button><button class="btn ghost" type="button" id="f-more">+ Añadir otro</button></div>
     </div>
     <p id="f-msg" class="msg" aria-live="polite"></p>
   </form>
 </div></dialog>
 
+<dialog class="sheet" id="sh-ai" aria-labelledby="sh-ai-t"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="sh-ai-t">Asistente</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div id="ai-log" class="ailog" role="log" aria-live="polite"></div>
+  <div id="ai-tips" class="row">
+    <button class="btn ghost sm" type="button" data-ai-tip="He desayunado ">He desayunado…</button>
+    <button class="btn ghost sm" type="button" data-ai-tip="He entrenado ">He entrenado…</button>
+    <button class="btn ghost sm" type="button" data-ai-ask="¿Cómo voy hoy y qué me falta?">¿Cómo voy hoy?</button>
+  </div>
+  <form id="ai-form" class="aiform" autocomplete="off">
+    <span class="icon-btn fileb ai-img" title="Mandar una foto" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><input id="ai-photo" type="file" accept="image/*" aria-label="Foto del plato o captura del entreno"></span>
+    <textarea id="ai-in" rows="2" maxlength="600" placeholder="2 tostadas con aguacate y un café con leche. Luego 8 km en 45 min." aria-label="Mensaje para el asistente"></textarea>
+    <button class="btn" type="submit" id="ai-send">Enviar</button>
+  </form>
+  <p class="sub">Las cantidades son estimaciones: revisa lo apuntado. No sustituye a tu nutricionista ni a tu médico.</p>
+</div></dialog>
+
 <dialog class="sheet" id="sh-calc" aria-labelledby="sh-calc-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-calc-t">Cuánto tiene cada alimento</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div class="row">
-    <label class="fld wide">Alimento<input id="c-q" type="text" placeholder="arroz, patata, pollo…" autocomplete="off"></label>
+    <label class="fld wide">Alimento o plato<input id="c-q" type="text" placeholder="arroz, paella, bocadillo…" autocomplete="off"></label>
     <label class="fld">Gramos<input id="c-g" type="text" inputmode="decimal" value="100"></label>
   </div>
   <div class="tbl-wrap"><table id="c-tbl" class="calc"></table></div>
@@ -825,8 +867,112 @@ const FOODS = [
   ["Uvas", 69, 0.7, 18, 0.2, 120, 15.5, 0.9], ["Sandía", 30, 0.6, 8, 0.2, 250, 6.2, 0.4], ["Melón", 34, 0.8, 8, 0.2, 250, 7.9, 0.9],
   ["Kiwi", 61, 1.1, 15, 0.5, 80, 9, 3], ["Mandarina", 53, 0.8, 13, 0.3, 80, 10.6, 1.8], ["Zumo de naranja", 45, 0.7, 10, 0.2, 200, 8.4, 0.2],
   ["Refresco de cola", 42, 0, 10.6, 0, 330, 10.6, 0], ["Vino tinto", 85, 0.1, 2.6, 0, 150, 0.6, 0],
+  // Carnes, pescados y huevos
+  ["Muslo de pollo asado", 209, 26, 0, 11, 150, 0, 0], ["Pollo asado (con piel)", 239, 27, 0, 14, 150, 0, 0], ["Pechuga de pavo a la plancha", 135, 29, 0, 1.5, 150, 0, 0],
+  ["Alitas de pollo", 280, 26, 0, 19, 150, 0, 0], ["Carne picada mixta", 250, 18, 0, 20, 120, 0, 0], ["Solomillo de cerdo", 143, 26, 0, 3.5, 150, 0, 0],
+  ["Chuleta de cerdo", 230, 26, 0, 14, 150, 0, 0], ["Costillas de cerdo", 290, 24, 0, 21, 150, 0, 0], ["Cordero asado", 260, 25, 0, 17, 150, 0, 0],
+  ["Conejo", 160, 27, 0, 5.5, 150, 0, 0], ["Salchichas frescas", 300, 14, 2, 26, 100, 0.5, 0], ["Salchichas de Frankfurt", 280, 12, 3, 25, 70, 1, 0],
+  ["Bacon a la plancha", 500, 33, 1, 40, 20, 0, 0], ["Lomo embuchado", 330, 42, 1, 18, 40, 0, 0], ["Salchichón", 430, 25, 2, 36, 30, 1, 0],
+  ["Mortadela", 300, 14, 3, 26, 40, 1, 0], ["Atún en aceite (lata escurrida)", 190, 26, 0, 9.5, 60, 0, 0], ["Atún fresco", 140, 24, 0, 5, 150, 0, 0],
+  ["Caballa", 205, 19, 0, 14, 150, 0, 0], ["Dorada", 135, 20, 0, 6, 180, 0, 0], ["Lubina", 125, 21, 0, 4.5, 180, 0, 0],
+  ["Trucha", 140, 20, 0, 6.5, 180, 0, 0], ["Lenguado", 86, 17.5, 0, 1.5, 180, 0, 0], ["Pez espada (emperador)", 145, 20, 0, 7, 150, 0, 0],
+  ["Boquerones fritos", 240, 20, 8, 14, 120, 0, 0.3], ["Mejillones al vapor", 120, 17, 5, 3, 120, 0, 0], ["Pulpo cocido", 164, 30, 4.4, 2, 150, 0, 0],
+  ["Langostinos cocidos", 100, 22, 0.5, 1, 100, 0, 0], ["Sepia a la plancha", 100, 20, 1, 1.5, 150, 0, 0], ["Palitos de cangrejo (surimi)", 95, 8, 13, 1, 60, 5, 0],
+  ["Salmón ahumado", 180, 23, 0, 10, 50, 0, 0], ["Anchoas en aceite", 210, 29, 0, 10, 20, 0, 0], ["Huevo frito", 196, 13.6, 0.8, 15, 60, 0.4, 0],
+  ["Huevo cocido", 155, 12.6, 1.1, 10.6, 60, 1.1, 0], ["Tortilla francesa", 175, 12, 0.7, 13.5, 125, 0.4, 0], ["Revuelto de huevos", 170, 11, 1.5, 13, 150, 1, 0],
+  // Cereales, tubérculos y legumbres
+  ["Arroz integral cocido", 123, 2.7, 26, 1, 200, 0.2, 1.6], ["Pasta integral cocida", 140, 5.5, 28, 1, 200, 0.8, 4], ["Fideos de arroz cocidos", 108, 1.8, 24, 0.2, 200, 0, 1],
+  ["Ñoquis", 135, 3, 28, 1, 200, 0.5, 1.5], ["Puré de patata", 100, 2, 15, 3.5, 200, 1.5, 1.5], ["Patata asada", 93, 2.5, 21, 0.1, 200, 1.2, 2.2],
+  ["Yuca cocida", 130, 1, 31, 0.3, 150, 1.5, 1.8], ["Plátano macho cocido", 116, 0.8, 31, 0.2, 150, 14, 2.3], ["Plátano macho frito (tajadas)", 236, 1.4, 41, 7.5, 100, 22, 3.2],
+  ["Patacones (tostones)", 309, 1.5, 49, 12, 100, 3.6, 3.5], ["Arepa de maíz", 210, 4.5, 40, 3, 100, 0.5, 2.5], ["Tortilla de maíz", 218, 5.7, 45, 2.9, 30, 0.9, 6.3],
+  ["Tortilla de trigo (wrap)", 300, 8, 50, 7.5, 60, 2.5, 3], ["Frijoles negros cocidos", 132, 8.9, 24, 0.5, 200, 0.3, 8.7], ["Alubias blancas cocidas", 120, 8, 20, 0.5, 250, 0.5, 6],
+  ["Guisantes", 81, 5.4, 14, 0.4, 100, 5.7, 5.7], ["Maíz dulce (lata)", 86, 3, 17, 1.2, 80, 5, 2.4], ["Edamame", 121, 12, 9, 5, 100, 2.2, 5.2],
+  ["Soja texturizada (seca)", 330, 50, 30, 1, 30, 8, 15], ["Seitán", 120, 24, 4, 1.5, 100, 0, 0.5], ["Tempeh", 192, 20, 8, 11, 100, 0, 5],
+  ["Hamburguesa vegetal", 180, 16, 8, 9, 100, 1, 4], ["Pan de centeno", 259, 8.5, 48, 3.3, 60, 3.9, 5.8], ["Pan de hamburguesa", 280, 9, 50, 4.5, 60, 6, 2.5],
+  ["Tostada con tomate y aceite", 230, 5, 28, 11, 110, 3, 2], ["Croissant", 406, 8, 46, 21, 60, 11, 2.6], ["Magdalena", 420, 6, 50, 22, 35, 28, 1],
+  ["Churros", 370, 5, 40, 21, 100, 2, 1.5], ["Donut", 420, 5, 49, 23, 55, 20, 1.5], ["Bizcocho casero", 370, 6, 52, 15, 60, 28, 1],
+  ["Galletas integrales (digestive)", 470, 7, 63, 21, 30, 17, 3.5], ["Galletas de avena", 450, 7, 65, 18, 30, 25, 4], ["Muesli", 365, 10, 62, 7, 50, 15, 8],
+  ["Granola", 450, 10, 60, 18, 50, 20, 7], ["Tortitas de maíz", 385, 7, 80, 3, 18, 1, 5], ["Harina de avena", 380, 13, 63, 7, 40, 1, 9],
+  ["Crema de arroz (polvo)", 365, 7, 80, 1, 50, 0.5, 1], ["Palomitas", 470, 9, 55, 23, 30, 0.5, 10],
+  // Lácteos y bebidas vegetales
+  ["Leche entera", 63, 3.2, 4.7, 3.6, 250, 4.7, 0], ["Leche desnatada", 35, 3.4, 4.9, 0.2, 250, 4.9, 0], ["Leche con cacao", 75, 3.3, 11, 1.8, 250, 10.5, 0.5],
+  ["Bebida de soja", 40, 3.3, 2, 1.9, 250, 1.5, 0.5], ["Bebida de avena", 45, 0.8, 7.5, 1.3, 250, 4, 0.8], ["Bebida de almendra (sin azúcar)", 14, 0.5, 0.2, 1.2, 250, 0.1, 0.3],
+  ["Yogur desnatado", 40, 4.3, 5.5, 0.2, 125, 5.5, 0], ["Yogur de sabores", 85, 3.2, 13.5, 2, 125, 13, 0], ["Yogur proteico (tipo skyr)", 62, 11, 4, 0.2, 150, 4, 0],
+  ["Kéfir", 60, 3.4, 4.5, 3.2, 200, 4.5, 0], ["Queso en lonchas", 300, 22, 1.5, 23, 20, 1, 0], ["Queso semicurado", 370, 24, 1, 30, 30, 0.5, 0],
+  ["Queso de cabra (rulo)", 300, 18, 1.5, 25, 30, 1, 0], ["Queso crema (untar)", 250, 5.5, 3.5, 24, 30, 3.5, 0], ["Queso parmesano", 400, 36, 3, 28, 10, 0.5, 0],
+  ["Queso feta", 265, 14, 4, 21, 40, 1.5, 0], ["Cuajada", 95, 4.5, 6.5, 5.5, 125, 6.5, 0], ["Natillas", 125, 3.5, 19, 3.5, 125, 16, 0],
+  ["Flan de huevo", 140, 4.5, 23, 3.5, 110, 22, 0], ["Arroz con leche", 130, 3.2, 22, 3, 150, 14, 0.2], ["Helado", 207, 3.5, 24, 11, 100, 21, 0.7],
+  // Frutas
+  ["Piña", 50, 0.5, 13, 0.1, 150, 10, 1.4], ["Mango", 60, 0.8, 15, 0.4, 150, 13.7, 1.6], ["Melocotón", 39, 0.9, 9.5, 0.3, 150, 8.4, 1.5],
+  ["Ciruelas", 46, 0.7, 11.4, 0.3, 100, 9.9, 1.4], ["Cerezas", 63, 1.1, 16, 0.2, 100, 12.8, 2.1], ["Arándanos", 57, 0.7, 14.5, 0.3, 100, 10, 2.4],
+  ["Frambuesas", 52, 1.2, 12, 0.7, 100, 4.4, 6.5], ["Granada", 83, 1.7, 19, 1.2, 150, 13.7, 4], ["Papaya", 43, 0.5, 11, 0.3, 150, 7.8, 1.7],
+  ["Higos", 74, 0.8, 19, 0.3, 80, 16, 2.9], ["Pomelo", 42, 0.8, 11, 0.1, 200, 7, 1.6], ["Coco rallado", 660, 6.9, 23.7, 64.5, 15, 7.4, 16.3],
+  ["Pasas", 299, 3.1, 79, 0.5, 30, 59, 3.7], ["Orejones (albaricoque seco)", 241, 3.4, 63, 0.5, 30, 53, 7.3], ["Ciruelas pasas", 240, 2.2, 64, 0.4, 30, 38, 7.1],
+  ["Compota de manzana", 68, 0.2, 17.5, 0.2, 100, 14.7, 1.2], ["Macedonia de frutas", 55, 0.6, 13, 0.2, 200, 11, 1.8], ["Fruta en almíbar", 70, 0.4, 17, 0.1, 120, 16, 1],
+  // Verduras, cremas y ensaladas
+  ["Pepino", 15, 0.7, 3.6, 0.1, 150, 1.7, 0.5], ["Berenjena", 25, 1, 6, 0.2, 200, 3.5, 3], ["Coliflor", 25, 1.9, 5, 0.3, 200, 1.9, 2],
+  ["Alcachofas", 47, 3.3, 10.5, 0.2, 150, 1, 5.4], ["Espárragos", 20, 2.2, 3.9, 0.1, 150, 1.9, 2.1], ["Calabaza", 26, 1, 6.5, 0.1, 200, 2.8, 0.5],
+  ["Puerro", 61, 1.5, 14, 0.3, 100, 3.9, 1.8], ["Remolacha cocida", 44, 1.7, 10, 0.2, 100, 8, 2], ["Col o repollo", 25, 1.3, 5.8, 0.1, 150, 3.2, 2.5],
+  ["Acelgas", 19, 1.8, 3.7, 0.2, 200, 1.1, 1.6], ["Tomate frito (salsa)", 80, 1.5, 9, 4, 80, 7, 1.5], ["Tomate triturado", 30, 1.5, 5.5, 0.2, 100, 4.5, 1.5],
+  ["Menestra de verduras", 50, 2.8, 7, 0.6, 250, 3, 3.5], ["Verduras a la plancha", 65, 1.5, 6, 3.5, 200, 4, 2.5], ["Pisto", 80, 1.3, 6.5, 5.3, 200, 5, 2],
+  ["Crema de verduras", 45, 1.2, 5.5, 2, 300, 2.5, 1.3], ["Crema de calabaza", 50, 1, 6.5, 2.2, 300, 3, 1], ["Gazpacho", 45, 0.8, 3.5, 3, 250, 3, 0.8],
+  ["Salmorejo", 120, 2.5, 10, 7.5, 250, 3, 1], ["Caldo de pollo", 10, 1, 0.5, 0.4, 300, 0.2, 0], ["Sopa de fideos", 35, 1.5, 5.5, 0.7, 300, 0.4, 0.3],
+  ["Ensalada mixta (aliñada)", 70, 1.5, 4, 5, 250, 3, 1.5], ["Ensalada César", 160, 7, 6, 12, 250, 1.5, 1.5], ["Ensalada de pasta", 160, 5, 20, 6.5, 250, 2, 1.5],
+  ["Ensaladilla rusa", 160, 3, 10, 12, 200, 1.5, 1.5],
+  // Platos preparados
+  ["Paella mixta", 160, 8, 20, 5.5, 350, 0.8, 0.8], ["Arroz con pollo", 150, 8.5, 19, 4.3, 350, 0.8, 0.7], ["Arroz a la cubana", 165, 4.5, 22, 6.5, 350, 3, 0.8],
+  ["Arroz tres delicias", 165, 5, 25, 5, 300, 1.5, 1], ["Arroz con verduras", 125, 2.7, 22, 3, 350, 1.2, 1.2], ["Risotto de setas", 150, 3.5, 20, 6, 300, 0.8, 0.7],
+  ["Macarrones con tomate", 150, 5, 24, 3.8, 300, 3, 1.8], ["Espaguetis a la boloñesa", 150, 7.5, 18, 5.2, 350, 2.5, 1.5], ["Espaguetis a la carbonara", 200, 8, 22, 9, 350, 1.5, 1.2],
+  ["Lasaña de carne", 150, 8, 12, 8, 300, 2.5, 1], ["Canelones", 150, 7, 12, 8, 250, 2.5, 0.8], ["Pasta con atún y tomate", 155, 8.5, 22, 3.5, 300, 2.5, 1.6],
+  ["Lentejas guisadas", 110, 6.5, 13, 3.5, 350, 1.5, 4], ["Lentejas con chorizo", 135, 8, 13, 5.5, 350, 1.3, 4], ["Cocido (garbanzos con carne)", 150, 9, 12, 7.5, 400, 1, 3.5],
+  ["Fabada", 160, 9, 12, 8.5, 350, 0.8, 4], ["Potaje de garbanzos y espinacas", 110, 5.5, 13, 4, 350, 1, 4], ["Pollo al curry con arroz", 145, 9, 17, 4.5, 350, 1.5, 0.8],
+  ["Pollo con arroz y verduras", 130, 10, 15, 3.3, 350, 1, 1], ["Pollo empanado", 250, 20, 14, 13, 150, 0.8, 0.8], ["Nuggets de pollo", 270, 15, 17, 16, 100, 0.5, 1],
+  ["Albóndigas en salsa", 170, 11, 7, 11, 200, 2, 0.8], ["Estofado de ternera con patatas", 110, 9, 8, 4.5, 350, 1.2, 1.2], ["Filete empanado", 250, 20, 12, 14, 150, 0.7, 0.6],
+  ["Pescado rebozado", 215, 15, 12, 12, 150, 0.5, 0.5], ["Merluza en salsa verde", 105, 14, 2.5, 4.2, 250, 0.5, 0.3], ["Calamares a la romana", 220, 12, 15, 12, 150, 0.5, 0.6],
+  ["Croquetas", 245, 7, 22, 14, 120, 2.5, 1], ["Empanada de atún", 280, 9, 30, 13.5, 150, 2.5, 1.5], ["Empanadillas", 300, 8, 30, 16, 100, 2, 1.5],
+  ["Huevos rotos con jamón", 190, 9, 12, 12, 300, 0.6, 1.2], ["Bocadillo de jamón serrano", 250, 14, 32, 7.5, 160, 2.5, 1.8], ["Bocadillo de tortilla", 215, 7.5, 27, 8, 220, 2, 1.8],
+  ["Bocadillo de lomo con queso", 265, 15, 26, 11, 200, 2, 1.5], ["Bocadillo de atún", 230, 12, 28, 7.5, 180, 2.5, 1.6], ["Sándwich mixto", 260, 12.5, 25, 12, 130, 3, 1.4],
+  ["Sándwich vegetal", 200, 7, 20, 10, 180, 3, 1.8], ["Hamburguesa completa (con pan)", 250, 13, 22, 12, 220, 4, 1.3], ["Perrito caliente", 270, 10, 24, 15, 130, 4, 1],
+  ["Kebab (dürüm)", 215, 11, 20, 10, 350, 2, 1.5], ["Burrito", 190, 8.5, 22, 7.5, 300, 1.5, 2.5], ["Tacos de carne", 215, 10, 19, 11, 150, 1.5, 2.5],
+  ["Quesadilla", 290, 12, 25, 16, 150, 1.5, 1.5], ["Sushi (maki o nigiri)", 145, 5.5, 27, 1.5, 200, 4, 0.6], ["Poke de salmón", 150, 7.5, 17, 5.5, 400, 2.5, 1.2],
+  ["Wok de pollo con verduras", 100, 10, 6, 4, 300, 3, 1.5], ["Fideos chinos salteados (yakisoba)", 150, 5.5, 20, 5, 300, 3, 1.5], ["Rollitos de primavera", 230, 5, 28, 11, 100, 3, 2],
+  ["Ceviche", 90, 13, 6, 1.5, 200, 2, 0.8], ["Quiche lorraine", 290, 9.5, 19, 20, 150, 2, 0.8], ["Guacamole", 155, 2, 8.5, 13.5, 50, 0.9, 6],
+  // Salsas, dulces y frutos secos
+  ["Kétchup", 100, 1.2, 24, 0.1, 15, 22, 0.3], ["Mostaza", 60, 4, 6, 3.5, 10, 1, 3], ["Salsa de soja", 55, 8, 5, 0.1, 10, 0.4, 0.5],
+  ["Alioli", 700, 1, 1.5, 77, 15, 0.5, 0], ["Pesto", 460, 5, 5, 46, 20, 2, 1.5], ["Azúcar", 400, 0, 100, 0, 8, 100, 0],
+  ["Mermelada", 250, 0.4, 62, 0.1, 20, 49, 1], ["Membrillo", 240, 0.4, 59, 0.2, 30, 50, 2], ["Crema de cacao (untar)", 540, 6, 58, 31, 20, 56, 3.5],
+  ["Cacao soluble azucarado", 375, 4.5, 80, 3, 15, 70, 5], ["Cacao puro en polvo", 230, 20, 58, 14, 10, 2, 33], ["Chocolate con leche", 535, 7.5, 59, 30, 20, 52, 3.4],
+  ["Gominolas", 340, 6, 77, 0.2, 30, 55, 0], ["Semillas de chía", 486, 16.5, 42, 31, 15, 0, 34], ["Pipas de girasol", 584, 21, 20, 51, 30, 2.6, 8.6],
+  ["Pipas de calabaza", 559, 30, 11, 49, 20, 1.4, 6], ["Cacahuetes", 567, 26, 16, 49, 30, 4, 8.5], ["Anacardos", 553, 18, 30, 44, 30, 6, 3.3],
+  ["Pistachos", 560, 20, 28, 45, 30, 7.7, 10.6], ["Avellanas", 628, 15, 17, 61, 25, 4.3, 9.7], ["Frutos secos variados", 600, 20, 21, 52, 30, 4.5, 8],
+  // Bebidas y nutrición deportiva
+  ["Café solo", 2, 0.1, 0, 0, 60, 0, 0], ["Café con leche", 30, 2, 3, 1, 200, 3, 0], ["Infusión o té sin azúcar", 1, 0, 0.2, 0, 250, 0, 0],
+  ["Zumo de manzana", 46, 0.1, 11.3, 0.1, 200, 9.6, 0.2], ["Batido de frutas (smoothie)", 55, 0.8, 12.5, 0.3, 250, 10.5, 1], ["Refresco sin azúcar (zero)", 0, 0, 0, 0, 330, 0, 0],
+  ["Cerveza sin alcohol", 22, 0.3, 4.8, 0, 330, 2.5, 0], ["Vino blanco", 82, 0.1, 2.6, 0, 150, 1, 0], ["Bebida energética", 45, 0, 11, 0, 250, 11, 0],
+  ["Bebida isotónica", 24, 0, 6, 0, 500, 5.5, 0], ["Gel energético", 250, 0, 62, 0, 40, 30, 0], ["Barrita energética", 380, 7, 68, 8, 55, 30, 4],
+  ["Barrita de proteína", 360, 33, 33, 12, 60, 4, 8], ["Barrita de cereales", 400, 6, 68, 11, 25, 28, 4], ["Batido recuperador (polvo)", 380, 25, 65, 2, 60, 35, 0],
+  ["Proteína vegetal (polvo)", 380, 75, 6, 6, 30, 1, 3], ["Caseína (polvo)", 365, 80, 4, 2, 30, 3, 0], ["Batido de proteínas listo para beber", 50, 7.5, 3.5, 0.7, 330, 3, 0],
 ];
-const findFood = name => { const k = String(name).trim().toLowerCase(); return FOODS.find(f => f[0].toLowerCase() === k); };
+/* «Mis platos»: lo que cada persona apunta a mano y la app recuerda (`profile.foods`). Con gramos se escala como los de la lista; sin gramos vale por una ración. */
+const myFoods = () => (S.profile && Array.isArray(S.profile.foods) ? S.profile.foods : []);
+const mineRow = m => { const k = m.g > 0 ? 100 / m.g : 1; return [m.name, m.kcal * k, (m.p || 0) * k, (m.c || 0) * k, (m.f || 0) * k, m.g > 0 ? m.g : 0, (m.az || 0) * k, (m.fi || 0) * k, m.id]; };
+const findFood = name => { const k = plain(name).trim(); if (!k) return undefined; const m = myFoods().find(x => plain(x.name) === k); return m ? mineRow(m) : FOODS.find(f => plain(f[0]) === k); };
+/* Busca sin tildes ni mayúsculas y con las palabras en cualquier orden; primero lo que empieza igual y los platos propios */
+function searchFoods(q) {
+  const toks = plain(q).split(/\s+/).filter(Boolean); if (!toks.length) return [];
+  const full = toks.join(" "), mine = myFoods().map(mineRow), own = new Set(mine.map(f => plain(f[0]))), out = [];
+  mine.concat(FOODS.filter(f => !own.has(plain(f[0])))).forEach(f => {
+    const n = plain(f[0]); if (!toks.every(t => n.includes(t))) return;
+    out.push([n === full ? 0 : n.startsWith(full) ? 1 : n.split(/[\s(]+/).some(w => w.startsWith(toks[0])) ? 2 : 3, f[8] ? 0 : 1, n.length, f]);
+  });
+  return out.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]).map(x => x[3]);
+}
+function keepFood(rec) {
+  if (!S.profile || !rec.name) return false;
+  const p = clone(S.profile), k = plain(rec.name), list = (p.foods || []).filter(x => plain(x.name) !== k);
+  list.push({ id: uidGen(), name: String(rec.name).slice(0, 60), g: rec.g > 0 ? rec.g : 0, kcal: Math.round(rec.kcal) || 0, p: rec.p || 0, c: rec.c || 0, f: rec.f || 0, az: rec.az || 0, fi: rec.fi || 0 });
+  p.foods = list.slice(-150); saveProfile(p); return true;
+}
 
 /* ---------- Estado y guardado ---------- */
 const S = { mode: "loading", profile: null, days: {}, date: today(), week: monday(today()), tab: "hoy", got: { p: false, d: false } };
@@ -1117,7 +1263,7 @@ function rHoy() {
         <span><b>${esc((TYPES[a.type] || {}).n || a.type)}</b>${a.title ? " · " + esc(a.title) : ""}</span>
         <span class="num">${nf(actKcal(a, w))} kcal</span>
         <button class="icon-btn" type="button" data-del-act="${esc(a.id)}" aria-label="Borrar entreno">×</button>
-        <small class="num">${[a.km > 0 ? nf(a.km, 2) + " km" : "", a.min > 0 ? nf(a.min) + "′" : "", pace(a), a.hr > 0 ? nf(a.hr) + " ppm" : "", a.src === "strava" ? "de Strava" : a.src === "gpx" ? "de GPX" : a.src === "reloj" ? "del reloj" : ""].filter(Boolean).join(" · ")}</small>
+        <small class="num">${[a.km > 0 ? nf(a.km, 2) + " km" : "", a.min > 0 ? nf(a.min) + "′" : "", pace(a), a.hr > 0 ? nf(a.hr) + " ppm" : "", a.src === "strava" ? "de Strava" : a.src === "gpx" ? "de GPX" : a.src === "reloj" ? "del reloj" : a.src === "ia" ? "apuntado por el asistente" : ""].filter(Boolean).join(" · ")}</small>
       </li>`).join("")}</ul>` : ""}
     <div class="row actions">
       <button class="btn" type="button" data-sheet="act">Registrar entreno</button>
@@ -1488,7 +1634,7 @@ $("#p-form").addEventListener("submit", e => {
   }
   const first = !S.profile;
   profDirty = false;
-  saveProfile(Object.assign(S.profile ? { diet: S.profile.diet, rem: S.profile.rem, medrem: S.profile.medrem } : {}, { name: $("#p-name").value.trim().slice(0, 40), sex: $("#p-sex").value, age: Math.round(age), height, weight, activity: num($("#p-act").value), goal: $("#p-goal").value, plan: $("#p-plan").value, week, events: evs, target: tgt, health: readHealth(), injuries: clone(injuries()) }));
+  saveProfile(Object.assign(S.profile ? { diet: S.profile.diet, rem: S.profile.rem, medrem: S.profile.medrem, foods: S.profile.foods } : {}, { name: $("#p-name").value.trim().slice(0, 40), sex: $("#p-sex").value, age: Math.round(age), height, weight, activity: num($("#p-act").value), goal: $("#p-goal").value, plan: $("#p-plan").value, week, events: evs, target: tgt, health: readHealth(), injuries: clone(injuries()) }));
   msg.textContent = "Guardado."; msg.className = "msg";
   if (first) location.hash = "#hoy";
 });
@@ -1512,22 +1658,21 @@ $("#g-form").addEventListener("submit", e => {
 
 /* ---------- Comidas ---------- */
 $("#f-slot").innerHTML = SLOTS.map(([k, n]) => `<option value="${k}">${n}</option>`).join("");
-$("#foods").innerHTML = FOODS.map(f => `<option value="${esc(f[0])}"></option>`).join("");
 $("#a-type").innerHTML = typeOpts("carrera");
 (() => { const h = new Date().getHours() + new Date().getMinutes() / 60; $("#f-slot").value = h < 11 ? "des" : h < 13 ? "mm" : h < 16.5 ? "com" : h < 19.5 ? "mer" : "cen"; })();
 const plain = t => String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 function rCalc() {
   const q = plain($("#c-q").value.trim()), g = num($("#c-g").value) > 0 ? num($("#c-g").value) : 100, hc = !!health().cond;
-  const all = q ? FOODS.filter(f => plain(f[0]).includes(q)) : FOODS, show = q ? all.slice(0, 30) : all.slice(0, 8);
-  const v = (x, d = 0) => nf(x * g / 100, d);
+  const mine = myFoods().map(mineRow).reverse(), all = q ? searchFoods(q) : mine.concat(FOODS), show = q ? all.slice(0, 30) : all.slice(0, Math.max(8, Math.min(mine.length, 20)));
+  const v = (f, i, d = 0) => nf(f[5] ? f[i] * g / 100 : f[i], d); // un plato propio sin gramos vale por una ración
   $("#c-tbl").innerHTML = show.length ? `<thead><tr><th>${nf(g)} g de…</th><th>kcal</th><th>P</th><th>H</th><th>G</th><th></th></tr></thead><tbody>` + show.map(f => `<tr>
-      <td>${esc(f[0])}</td><td><b>${v(f[1])}</b></td><td>${v(f[2])}</td><td>${v(f[3])}${hc ? ` <small style="color:var(--muted)">(${rac(f[3] * g / 100)} r)</small>` : ""}</td><td>${v(f[4])}</td>
-      <td><button class="btn ghost sm" type="button" data-use-food="${esc(f[0])}">Apuntar</button></td></tr>`).join("") + `</tbody>` : "";
-  $("#c-note").textContent = !show.length ? "No está en la lista. Apúntalo a mano" + (sample ? " o usa Calcular con IA." : ".") : q ? (all.length > show.length ? "Hay más resultados: afina la búsqueda. " : "") + "Valores aproximados. Proteína, hidratos y grasa en gramos. Fíjate si el alimento es crudo o cocido."
-    : `Escribe para buscar entre ${FOODS.length} alimentos. Valores aproximados; fíjate si es crudo o cocido.`;
+      <td>${esc(f[0])}${f[5] ? "" : " (1 ración)"}${f[8] ? `<span class="mine">Tuyo</span>` : ""}</td><td><b>${v(f, 1)}</b></td><td>${v(f, 2)}</td><td>${v(f, 3)}${hc ? ` <small style="color:var(--muted)">(${rac(f[5] ? f[3] * g / 100 : f[3])} r)</small>` : ""}</td><td>${v(f, 4)}</td>
+      <td><button class="btn ghost sm" type="button" data-use-food="${esc(f[0])}">Apuntar</button>${f[8] ? ` <button class="btn ghost sm" type="button" data-del-food="${esc(f[8])}" aria-label="Quitar ${esc(f[0])} de mis platos">Quitar</button>` : ""}</td></tr>`).join("") + `</tbody>` : "";
+  $("#c-note").textContent = !show.length ? "No está en la lista. Apúntalo a mano" + (sample ? " o usa Calcular con IA" : "") + " y la app lo recordará en tus platos." : q ? (all.length > show.length ? "Hay más resultados: afina la búsqueda. " : "") + "Valores aproximados. Proteína, hidratos y grasa en gramos. Fíjate si el alimento es crudo o cocido."
+    : `Escribe para buscar entre ${FOODS.length} alimentos y platos${mine.length ? " y los " + mine.length + " tuyos" : ""}. Valores aproximados; fíjate si es crudo o cocido.`;
 }
 $("#c-q").addEventListener("input", rCalc); $("#c-g").addEventListener("input", rCalc);
-let aiMeal = false, editMeal = null, mealMode = "day", mealAdded = 0;
+let aiMeal = false, editMeal = null, mealMode = "day", mealAdded = 0, macroTouched = false;
 function mealFields(show) { $("#f-fields").hidden = !show; }
 function defaultSlot() { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? "des" : h < 13 ? "mm" : h < 16.5 ? "com" : h < 19.5 ? "mer" : "cen"; }
 /* La hoja de comida sirve para apuntar lo de hoy («day») y para montar el plan pautado («plan»). Con `slot` se abre ya en ese momento del día. */
@@ -1540,25 +1685,63 @@ function openMeal(id, slot, mode) {
   $("#f-slot").value = m ? m.slot : slot || defaultSlot(); $("#f-name").value = m ? m.name : ""; $("#f-g").value = m ? sv(m.g) : "";
   $("#f-kcal").value = m ? String(m.kcal) : ""; $("#f-p").value = m ? sv(m.p) : ""; $("#f-c").value = m ? sv(m.c) : ""; $("#f-f").value = m ? sv(m.f) : ""; $("#f-az").value = m ? sv(m.az) : ""; $("#f-fi").value = m ? sv(m.fi) : "";
   $("#f-msg").textContent = ""; $("#f-msg").className = "msg"; mealFields(!!m || !!slot || mealMode === "plan"); mealList(); openSheet("meal");
+  macroTouched = false; $("#f-keep").checked = !m; $("#f-sug").hidden = true; rKeep();
+}
+/* Sugerencias mientras se escribe: los platos propios y los de la lista. Con el campo vacío, los últimos platos propios. */
+function rSug() {
+  const box = $("#f-sug"), q = $("#f-name").value.trim(), hit = findFood(q);
+  let list = q ? searchFoods(q).slice(0, 8) : myFoods().slice(-6).reverse().map(mineRow);
+  if (hit && list.length === 1) list = []; // ya está elegido
+  box.hidden = !list.length && !(q.length >= 3 && !hit);
+  box.innerHTML = list.length ? list.map(f => `<button type="button" role="option" data-food="${esc(f[0])}"><span>${esc(f[0])}${f[8] ? `<span class="mine">Tuyo</span>` : ""}</span><span class="num">${nf(f[1])} kcal · ${f[5] ? "100 g" : "ración"}</span></button>`).join("")
+    : `<p>No está en la lista. Pon tú las calorías${sample ? " o usa Calcular con IA" : ""} y la app lo recordará para la próxima vez.</p>`;
+}
+function pickFood(name) { $("#f-name").value = name; $("#f-g").value = ""; fromTable(true); $("#f-sug").hidden = true; rKeep(); const g = $("#f-g"); g.focus(); g.select(); }
+/* La casilla de recordar el plato sale cuando lo escrito no es de la lista, o es un plato propio al que se le han cambiado los valores */
+function rKeep() {
+  const name = $("#f-name").value.trim(), k = plain(name), mine = myFoods().find(x => plain(x.name) === k), builtin = FOODS.some(f => plain(f[0]) === k);
+  const on = !!S.profile && !!name && $("#f-kcal").value.trim() !== "" && !(builtin && !mine) && !(mine && !macroTouched);
+  $("#f-keep-box").hidden = !on;
+  if (on) $("#f-keep-t").textContent = mine ? "Actualizar «" + mine.name + "» en mis platos con estos valores" : "Recordar este plato: la próxima vez sale al buscarlo";
 }
 /* Lo que ya hay en ese momento del día (o del plan) y su suma, para ir añadiendo ingredientes */
 function mealList() {
   const k = $("#f-slot").value, box = $("#f-list"), name = ((SLOTS.find(x => x[0] === k) || [])[1] || "").toLowerCase();
   const items = mealMode === "plan" ? (((diet() || {}).slots || {})[k] || []) : ((S.days[S.date] || {}).meals || []).filter(m => m.slot === k && m.id !== editMeal);
-  box.hidden = !items.length; if (!items.length) return;
+  box.hidden = !items.length; mealList.items = items; if (!items.length) return;
   const t = items.reduce((a, x) => ({ kcal: a.kcal + (x.kcal || 0), p: a.p + (x.p || 0), c: a.c + (x.c || 0), f: a.f + (x.f || 0) }), { kcal: 0, p: 0, c: 0, f: 0 });
-  box.innerHTML = `<div class="eyebrow">${mealMode === "plan" ? "En el plan, en" : "Ya llevas en"} ${esc(name)}</div><ul>${items.map(m => `<li><span>${esc(m.name)}${m.g ? " · " + nf(m.g) + " g" : ""}</span><span class="num">${nf(m.kcal)} kcal</span></li>`).join("")}</ul><p class="mtot num">Suma: <b>${nf(t.kcal)} kcal</b> · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g</p>`;
+  box.innerHTML = `<div class="eyebrow">${mealMode === "plan" ? "En el plan, en" : "Ya llevas en"} ${esc(name)}</div><ul>${items.map(m => `<li><span>${esc(m.name)}${m.g ? " · " + nf(m.g) + " g" : ""}</span><span class="num">${nf(m.kcal)} kcal</span></li>`).join("")}</ul><p class="mtot num">Suma: <b>${nf(t.kcal)} kcal</b> · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g</p>` +
+    (items.length > 1 && S.profile ? `<details><summary>Guardar todo esto como un plato mío</summary><div class="row"><input id="f-combo-n" type="text" maxlength="60" placeholder="Ponle nombre: mi ${esc(name)} de siempre" aria-label="Nombre del plato"><button class="btn ghost sm" type="button" id="f-combo-ok">Guardar plato</button></div></details>` : "");
 }
+/* Varias cosas apuntadas en un momento del día se pueden guardar juntas como un solo plato */
+function saveCombo() {
+  const inp = $("#f-combo-n"), name = inp ? inp.value.trim() : "", items = mealList.items || [], msg = $("#f-msg");
+  if (!name) { if (inp) inp.focus(); msg.textContent = "Ponle un nombre al plato."; msg.className = "msg err"; return; }
+  const sum = k => Math.round(items.reduce((a, x) => a + (x[k] || 0), 0) * 10) / 10;
+  keepFood({ name, g: items.every(x => x.g > 0) ? sum("g") : 0, kcal: sum("kcal"), p: sum("p"), c: sum("c"), f: sum("f"), az: sum("az"), fi: sum("fi") });
+  mealList(); msg.textContent = "Guardado «" + name + "» en tus platos. La próxima vez búscalo por su nombre y se apunta entero."; msg.className = "msg";
+}
+$("#f-list").addEventListener("click", e => { if (e.target.id === "f-combo-ok") saveCombo(); });
+$("#f-list").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "f-combo-n") { e.preventDefault(); saveCombo(); } });
 function fromTable(setGrams) {
   const f = findFood($("#f-name").value); if (!f) return;
-  const gEl = $("#f-g"); if (setGrams && !(num(gEl.value) > 0)) gEl.value = f[5];
-  const g = num(gEl.value); if (!(g > 0)) return;
+  const gEl = $("#f-g"); if (!f[5] && !setGrams) return; // plato propio sin gramos: una ración, no se escala
+  if (f[5] && setGrams && !(num(gEl.value) > 0)) gEl.value = String(f[5]).replace(".", ",");
+  const g = f[5] ? num(gEl.value) : 100; if (!(g > 0)) return;
   const r = (v, d) => String(Math.round(v * g / 100 * d) / d).replace(".", ",");
   $("#f-kcal").value = r(f[1], 1); $("#f-p").value = r(f[2], 10); $("#f-c").value = r(f[3], 10); $("#f-f").value = r(f[4], 10); $("#f-az").value = r(f[6], 10); $("#f-fi").value = r(f[7], 10);
-  aiMeal = false; $("#f-msg").textContent = ""; $("#f-msg").className = "msg";
+  aiMeal = false; macroTouched = false; $("#f-msg").textContent = ""; $("#f-msg").className = "msg";
 }
-$("#f-name").addEventListener("input", () => fromTable(true));
-$("#f-g").addEventListener("input", () => fromTable(false));
+$("#f-name").addEventListener("input", () => { fromTable(true); rSug(); rKeep(); });
+$("#f-name").addEventListener("focus", rSug);
+$("#f-g").addEventListener("input", () => { fromTable(false); rKeep(); });
+["#f-kcal", "#f-p", "#f-c", "#f-f", "#f-az", "#f-fi"].forEach(i => $(i).addEventListener("input", () => { macroTouched = true; rKeep(); }));
+$("#f-sug").addEventListener("click", e => { const b = e.target.closest("[data-food]"); if (b) pickFood(b.dataset.food); });
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-del-food]"); if (!b || !S.profile) return;
+  const p = clone(S.profile); p.foods = myFoods().filter(x => x.id !== b.dataset.delFood); if (!p.foods.length) delete p.foods;
+  saveProfile(p); rCalc(); toast("Quitado de tus platos.");
+});
 $("#f-slot").addEventListener("change", mealList);
 /* `stay`: añade y deja la hoja abierta para el siguiente ingrediente */
 function addMeal(stay) {
@@ -1567,7 +1750,7 @@ function addMeal(stay) {
   if (!name || !(kcal >= 0)) { msg.textContent = sample ? "Pon qué has comido y sus calorías, o pulsa Calcular con IA." : "Pon qué es y sus calorías, o elígelo de la lista."; msg.className = "msg err"; return; }
   const v = id => { const n = num($(id).value); return n > 0 ? n : 0; };
   const rec = { id: editMeal || uidGen(), slot: $("#f-slot").value, name, g: v("#f-g"), kcal: Math.round(kcal), p: v("#f-p"), c: v("#f-c"), f: v("#f-f"), az: v("#f-az"), fi: v("#f-fi"), ia: aiMeal };
-  let edited = false;
+  let edited = false; const keep = !$("#f-keep-box").hidden && $("#f-keep").checked;
   if (mealMode === "plan") {
     const dp = clone(diet() || { by: "", slots: {} }); dp.slots = dp.slots || {};
     (dp.slots[rec.slot] = dp.slots[rec.slot] || []).push({ id: rec.id, name: rec.name, g: rec.g, kcal: rec.kcal, p: rec.p, c: rec.c, f: rec.f });
@@ -1578,10 +1761,11 @@ function addMeal(stay) {
     openSlots.add(rec.slot); saveDay(d);
   }
   ["#f-name", "#f-g", "#f-kcal", "#f-p", "#f-c", "#f-f", "#f-az", "#f-fi"].forEach(i => { $(i).value = ""; });
-  aiMeal = false; editMeal = null; mealAdded++;
-  if (stay) { msg.textContent = "Añadido: " + rec.name + ". Sigue con el siguiente."; msg.className = "msg"; mealList(); $("#f-name").focus(); return; }
+  aiMeal = false; editMeal = null; mealAdded++; macroTouched = false; $("#f-keep").checked = true; $("#f-sug").hidden = true;
+  const kept = keep && keepFood(rec); rKeep();
+  if (stay) { msg.textContent = "Añadido: " + rec.name + (kept ? " (guardado en tus platos)" : "") + ". Sigue con el siguiente."; msg.className = "msg"; mealList(); $("#f-name").focus(); return; }
   msg.textContent = ""; msg.className = "msg";
-  const plan = mealMode === "plan"; closeSheets(); if (!plan) toast(edited ? "Comida actualizada." : mealAdded > 1 ? "Comidas añadidas." : "Comida añadida.");
+  const plan = mealMode === "plan"; closeSheets(); if (!plan) toast((edited ? "Comida actualizada." : mealAdded > 1 ? "Comidas añadidas." : "Comida añadida.") + (kept ? " Guardada en tus platos." : ""));
 }
 $("#f-form").addEventListener("submit", e => { e.preventDefault(); addMeal(false); });
 $("#f-more").addEventListener("click", () => addMeal(true));
@@ -1659,7 +1843,8 @@ $("#rem-form").addEventListener("submit", e => {
   msg.textContent = ""; closeSheets(); toast("Recordatorio guardado. Añádelo a tu calendario desde Perfil.");
 });
 /* ---------- IA: comida por texto o foto, captura de Strava, ideas ---------- */
-const AIERR = { rate_limited: "Demasiadas peticiones seguidas. Prueba dentro de un rato.", session_expired: "Tu sesión ha caducado. Vuelve a entrar y repite.", image_rejected: "No puedo usar esa imagen. Prueba con otra en JPG o PNG.", refused: "Eso no se ha podido analizar.", invalid_json: "No he entendido la respuesta. Inténtalo otra vez.", empty_completion: "No ha salido respuesta. Describe la comida con más detalle.", images_unavailable: "Aquí no se pueden enviar fotos." };
+const AIERR = { rate_limited: "Demasiadas peticiones seguidas. Prueba dentro de un rato.", session_expired: "Tu sesión ha caducado. Vuelve a entrar y repite.", image_rejected: "No puedo usar esa imagen. Prueba con otra en JPG o PNG.", need_ok: "Para usar la IA hace falta que aceptes el aviso.", busy: "La IA está saturada ahora mismo. Prueba en un minuto.", refused: "Eso no se ha podido analizar.", invalid_json: "No he entendido la respuesta. Inténtalo otra vez.", empty_completion: "No ha salido respuesta. Describe la comida con más detalle.", images_unavailable: "Aquí no se pueden enviar fotos." };
+const AIMSG = { photo: "Leer fotos solo funciona en la app publicada, abierta dentro de Claude. Aquí apúntalo a mano o elige de la lista.", calc: "Calcular con IA solo funciona en la app abierta dentro de Claude. Aquí apúntalo a mano o búscalo en la lista." };
 const AIOFF = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"];
 function aiFail(e, msgEl) {
   const c = e && e.code;
@@ -1686,7 +1871,7 @@ async function estimateMeal(file) {
     if (r.name) $("#f-name").value = String(r.name).slice(0, 80);
     if (Number(r.g) > 0 && !(g > 0)) $("#f-g").value = s(r.g);
     $("#f-kcal").value = s(r.kcal); $("#f-p").value = s(r.p, 10); $("#f-c").value = s(r.c, 10); $("#f-f").value = s(r.f, 10); $("#f-az").value = s(r.az, 10); $("#f-fi").value = s(r.fi, 10);
-    aiMeal = true;
+    aiMeal = true; macroTouched = true; $("#f-sug").hidden = true; rKeep();
     msg.textContent = (r.nota ? String(r.nota).slice(0, 220) + " " : "") + "Es una estimación: corrige lo que veas y pulsa Añadir."; msg.className = "msg";
   } catch (e) { aiFail(e, msg); } finally { $("#f-ai").disabled = false; }
 }
@@ -1694,10 +1879,10 @@ async function estimateMeal(file) {
   if (sample && canImg) return;
   e.preventDefault();
   const m = $(sel === "#f-photo" ? "#f-msg" : "#a-msg");
-  m.textContent = sample ? "En esta vista no se pueden enviar fotos. Escríbelo y pulsa Calcular con IA." : "Leer fotos solo funciona en la app publicada, abierta dentro de Claude. Aquí apúntalo a mano o elige de la lista.";
+  m.textContent = sample ? "En esta vista no se pueden enviar fotos. Escríbelo y pulsa Calcular con IA." : AIMSG.photo;
   m.className = "msg err";
 }));
-$("#f-ai").addEventListener("click", () => { if (!sample) { const m = $("#f-msg"); m.textContent = "Calcular con IA solo funciona en la app abierta dentro de Claude. Aquí apúntalo a mano o búscalo en la lista."; m.className = "msg err"; return; } estimateMeal(null); });
+$("#f-ai").addEventListener("click", () => { if (!sample) { const m = $("#f-msg"); m.textContent = AIMSG.calc; m.className = "msg err"; return; } estimateMeal(null); });
 $("#f-photo").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (f) estimateMeal(f); });
 
 $("#a-shot").addEventListener("change", async e => {
@@ -1723,7 +1908,7 @@ async function idea() {
     `\nHora: ${hour}:00. Entreno del día: ${(TYPES[s.type] || {}).n}${s.min ? " " + s.min + " min" : ""} (${acts.length ? "ya hecho" : "todavía no hecho"}).` +
     `\nLe quedan hoy: ${Math.round(t.kcal - tot.kcal)} kcal, ${Math.round(Math.max(0, t.prot - tot.p))} g de proteína, ${Math.round(Math.max(0, t.carb - tot.c))} g de hidratos, ${Math.round(Math.max(0, t.fat - tot.f))} g de grasa.` +
     `\nYa ha comido: ${((S.days[d] || {}).meals || []).map(m => m.name).join(", ") || "nada"}.` +
-    (isDm() ? `\nLa persona tiene ${health().cond === "pre" ? "prediabetes" : "diabetes"}${health().hcMeal > 0 ? " y un máximo de " + health().hcMeal + " g de hidratos por comida" : ""}: usa hidratos de absorción lenta, sin azúcares añadidos, indica los gramos de hidratos de cada opción y no des ningún consejo sobre medicación ni dosis.` : "") +
+    (isDm() && !sample.web ? `\nLa persona tiene ${health().cond === "pre" ? "prediabetes" : "diabetes"}${health().hcMeal > 0 ? " y un máximo de " + health().hcMeal + " g de hidratos por comida" : ""}: usa hidratos de absorción lenta, sin azúcares añadidos, indica los gramos de hidratos de cada opción y no des ningún consejo sobre medicación ni dosis.` : "") +
     `\nDa 2 opciones sencillas con alimentos corrientes y cantidades en gramos, cada una con sus kcal y proteína aproximadas. Si le quedan varias comidas, reparte y no gastes todo en una. Máximo 90 palabras, texto plano sin asteriscos ni almohadillas.`;
   try {
     const r = await sample(prompt, { cache: false, onText: ({ text }) => { rHoy.idea = text; const o = $("#idea-out"); if (o) { o.hidden = false; o.textContent = text; } } });
@@ -1735,6 +1920,88 @@ async function idea() {
     o.textContent = (e && e.text ? e.text + "\n\n" : "") + (AIERR[c] || "Ha fallado la conexión. Inténtalo otra vez.");
   } finally { const b = $("#idea-btn"); if (b) { b.disabled = false; b.textContent = "Otra idea"; } }
 }
+
+/* ---------- Asistente: se le cuenta lo comido y lo entrenado (o se le manda una foto) y lo apunta; también contesta dudas del día ----------
+   No recibe datos de salud (condición, glucosa, lesiones, medicación). La conversación no se guarda: dura lo que la app abierta. */
+let aiLog = [], aiBusy = false;
+function rAi() {
+  const box = $("#ai-log");
+  box.innerHTML = (aiLog.length ? aiLog : [{ who: "ia", text: "Cuéntame qué has comido o qué has entrenado y lo apunto por ti. También puedes mandarme una foto del plato o preguntarme cómo vas hoy." }]).map((m, i) => `<div class="aimsg ${m.who}${m.err ? " err" : ""}">${m.img ? `<small>Foto enviada</small>` : ""}${m.text ? `<p>${esc(m.text)}</p>` : ""}${(m.done || []).map((a, j) => `<div class="aidone${a.off ? " off" : ""}"><span>${esc(a.label)}</span>${a.off ? `<small>deshecho</small>` : `<button class="btn ghost sm" type="button" data-ai-undo="${i}:${j}">Deshacer</button>`}</div>`).join("")}</div>`).join("")
+    + (aiBusy ? `<div class="aimsg ia"><p>Pensando…</p></div>` : "");
+  box.scrollTop = box.scrollHeight; $("#ai-tips").hidden = aiLog.length > 0; $("#ai-send").disabled = aiBusy;
+}
+function aiContext() {
+  const p = S.profile, d = today(), now = new Date(), t = target(d), tot = totals(d), day = S.days[d] || {}, s = planned(d), slotN = k => (SLOTS.find(x => x[0] === k) || [])[1] || k;
+  const actTxt = a => ((TYPES[a.type] || {}).n || a.type) + (a.min ? " " + Math.round(a.min) + " min" : "") + (a.km ? " " + nf(a.km, 1) + " km" : "");
+  const past = [1, 2, 3, 4, 5, 6].map(i => { const k = addDays(d, -i), x = S.days[k]; return x && ((x.meals || []).length || (x.acts || []).length) ? `${k}: ${Math.round(totals(k).kcal)} de ${Math.round(target(k).kcal)} kcal; entrenos: ${(x.acts || []).map(actTxt).join(", ") || "ninguno"}` : ""; }).filter(Boolean);
+  const mine = myFoods().slice(-30).map(f => `${f.name}${f.g ? " (" + nf(f.g) + " g)" : " (1 ración)"}: ${f.kcal} kcal, P ${f.p}, H ${f.c}, G ${f.f}`);
+  return `\nHoy es ${d} (${DOW[dow(d)]}) y son las ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}.` +
+    `\nPersona: ${p.sex === "f" ? "mujer" : "hombre"}, ${p.age} años, ${p.height} cm, ${nf((day.weight || p.weight), 1)} kg. Objetivo: ${(GOALS[p.goal] || GOALS.mant).n}.` +
+    `\nObjetivo de hoy: ${Math.round(t.kcal)} kcal, ${Math.round(t.prot)} g de proteína, ${Math.round(t.carb)} g de hidratos, ${Math.round(t.fat)} g de grasa. Lleva: ${Math.round(tot.kcal)} kcal, P ${Math.round(tot.p)}, H ${Math.round(tot.c)}, G ${Math.round(tot.f)}.` +
+    `\nComidas apuntadas hoy: ${(day.meals || []).map(m => slotN(m.slot) + ": " + m.name + (m.g ? " " + nf(m.g) + " g" : "") + " (" + m.kcal + " kcal)").join("; ") || "ninguna"}.` +
+    `\nSesión prevista hoy: ${s.unset ? "sin planificar" : (TYPES[s.type] || {}).n + (s.min ? " " + s.min + " min" : "")}. Entrenos apuntados hoy: ${(day.acts || []).map(actTxt).join("; ") || "ninguno"}.` +
+    (past.length ? `\nDías anteriores:\n${past.join("\n")}` : "") +
+    (mine.length ? `\nPlatos que tiene guardados (si nombra uno, usa estos valores):\n${mine.join("\n")}` : "");
+}
+const AIROLE = () => `Eres el asistente de Elitepro, una app de entrenamiento y nutrición. Hablas en español de España, con tuteo, breve y claro.` +
+  `\nHaces dos cosas: apuntar en la app las comidas y los entrenos que la persona te cuenta o te enseña en una foto, y contestar sus dudas sobre su día, su semana, su comida y su entreno con los datos de abajo.` +
+  `\nReglas:` +
+  `\n- Por cada alimento o plato que diga que YA ha comido o bebido, una acción "meal". Sin cantidades, supón raciones normales de un adulto en España y dilo en la respuesta. No apuntes lo que solo piensa comer ni lo que pregunta.` +
+  `\n- Por cada entreno que diga que YA ha hecho, una acción "act". Si no da ni duración ni distancia, no lo apuntes: pregúntaselo.` +
+  `\n- Si en la foto hay un plato, apúntalo; si es una captura de una actividad deportiva, apunta el entreno con sus datos.` +
+  `\n- Si no tienes claro qué es o cuánto, pregunta antes de apuntar. No inventes datos que no estén aquí.` +
+  `\n- No des consejos médicos ni sobre medicación, y no diagnostiques. Si te lo piden, di que lo consulte con su médico o nutricionista.` +
+  `\n- "date" solo si no fue hoy, y como mucho 7 días atrás.` +
+  `\nResponde solo con un objeto JSON, sin más texto: {"reply": "lo que le dices, máximo 80 palabras, texto plano sin asteriscos", "actions": [...]}. Si no hay nada que apuntar, "actions": [].` +
+  `\nAcciones posibles:` +
+  `\n{"type": "meal", "slot": uno de ${JSON.stringify(SLOTS.map(x => x[0]))} (${SLOTS.map(x => x[0] + " = " + x[1].toLowerCase()).join(", ")}), "name": "nombre corto", "g": gramos, "kcal": número, "p": proteína, "c": hidratos, "f": grasa, "az": azúcares, "fi": fibra, "date": "AAAA-MM-DD"}` +
+  `\n{"type": "act", "sport": uno de ${JSON.stringify(Object.keys(TYPES).filter(k => k !== "descanso"))}, "min": minutos, "km": kilómetros o 0, "kcal": calorías si las dice o 0, "hr": pulso medio o 0, "title": "nombre corto", "date": "AAAA-MM-DD"}`;
+/* Lo que propone la IA se revisa antes de guardarlo: tipos conocidos, números razonables y fechas de la última semana */
+function aiApply(list) {
+  const done = [], byDay = {}, t0 = today(), lo = addDays(t0, -7), n = v => { v = Number(v); return v > 0 && isFinite(v) ? Math.round(v * 10) / 10 : 0; };
+  (Array.isArray(list) ? list : []).slice(0, 12).forEach(a => {
+    if (!a || typeof a !== "object") return;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(a.date || "") && a.date <= t0 && a.date >= lo ? a.date : t0, d = byDay[date] || (byDay[date] = getDay(date)), when = date === t0 ? "" : " (" + date.slice(8) + "/" + date.slice(5, 7) + ")";
+    if (a.type === "meal" && a.name && Number(a.kcal) >= 0 && Number(a.kcal) <= 5000) {
+      const slot = SLOTS.some(x => x[0] === a.slot) ? a.slot : defaultSlot(), rec = { id: uidGen(), slot, name: String(a.name).slice(0, 80), g: Math.min(n(a.g), 5000), kcal: Math.round(n(a.kcal)), p: n(a.p), c: n(a.c), f: n(a.f), az: n(a.az), fi: n(a.fi), ia: true };
+      d.meals.push(rec); if (date === S.date) openSlots.add(slot);
+      done.push({ kind: "meals", id: rec.id, date, label: SLOTS.find(x => x[0] === slot)[1] + ": " + rec.name + " · " + nf(rec.kcal) + " kcal" + when });
+    } else if (a.type === "act" && TYPES[a.sport] && a.sport !== "descanso" && (n(a.min) > 0 || n(a.km) > 0)) {
+      const rec = { id: uidGen(), type: a.sport, min: Math.min(n(a.min), 1440), km: Math.min(n(a.km), 500), kcal: Math.round(Math.min(n(a.kcal), 10000)), hr: n(a.hr) >= 40 && n(a.hr) <= 230 ? Math.round(n(a.hr)) : 0, title: a.title ? String(a.title).slice(0, 60) : "", src: "ia" };
+      d.acts.push(rec);
+      done.push({ kind: "acts", id: rec.id, date, label: "Entreno: " + TYPES[rec.type].n + (rec.min ? " · " + nf(rec.min) + "′" : "") + (rec.km ? " · " + nf(rec.km, 2) + " km" : "") + when });
+    }
+  });
+  Object.keys(byDay).forEach(k => { if (done.some(x => x.date === k)) saveDay(byDay[k]); });
+  return done;
+}
+async function aiSend(text, file) {
+  text = String(text || "").trim().slice(0, 600);
+  if (aiBusy || !sample || !S.profile || (!text && !file)) return;
+  const hist = aiLog.slice(-8).map(m => (m.who === "yo" ? "Persona: " : "Asistente: ") + (m.img ? "[foto] " : "") + (m.text || "") + ((m.done || []).length ? " [apuntado: " + m.done.filter(a => !a.off).map(a => a.label).join("; ") + "]" : "")).join("\n");
+  aiLog.push({ who: "yo", text, img: !!file }); aiBusy = true; rAi();
+  const prompt = AIROLE() + aiContext() + (hist ? "\nConversación hasta ahora:\n" + hist : "") + "\nMensaje nuevo de la persona" + (file ? " (con una foto adjunta)" : "") + ": " + (text || "(solo la foto)");
+  try {
+    const r = await sample.json(prompt, file ? { images: file } : {}), done = aiApply(r && r.actions);
+    aiLog.push({ who: "ia", text: String((r && r.reply) || (done.length ? "Apuntado." : "No te he entendido. ¿Me lo cuentas de otra forma?")).slice(0, 900), done });
+  } catch (e) {
+    const c = e && e.code;
+    if (AIOFF.includes(c)) { sample = null; canImg = false; showAi(); }
+    aiLog.push({ who: "ia", err: true, text: AIOFF.includes(c) ? "La ayuda de IA no está disponible ahora. Puedes apuntarlo a mano." : AIERR[c] || "Ha fallado la conexión. Inténtalo otra vez." });
+  } finally { aiBusy = false; rAi(); }
+}
+$("#ai-form").addEventListener("submit", e => { e.preventDefault(); const i = $("#ai-in"), t = i.value; if (!t.trim() || aiBusy) return; i.value = ""; aiSend(t, null); });
+$("#ai-in").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#ai-form").requestSubmit(); } });
+$("#ai-photo").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f || aiBusy) return; const i = $("#ai-in"), t = i.value; i.value = ""; aiSend(t, f); });
+$("#sh-ai").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.aiTip) { const i = $("#ai-in"); i.value = b.dataset.aiTip; i.focus(); return; }
+  if (b.dataset.aiAsk) return void aiSend(b.dataset.aiAsk, null);
+  if (b.dataset.aiUndo) {
+    const [i, j] = b.dataset.aiUndo.split(":").map(Number), a = aiLog[i] && aiLog[i].done[j]; if (!a || a.off) return;
+    const d = getDay(a.date); d[a.kind] = d[a.kind].filter(x => x.id !== a.id); a.off = true; saveDay(d); rAi();
+  }
+});
 
 /* ---------- Entrenos hechos ---------- */
 let actDraft = { src: "manual", title: "" };
@@ -1973,6 +2240,7 @@ document.addEventListener("click", e => {
     if (n === "diet") dietSheet();
     if (n === "rem") { $("#rem-form").reset(); $("#r-title").value = REMK.comida[1]; $("#r-msg").textContent = ""; remNote(); }
     if (n === "plan") planSheet(t.dataset.date || S.date);
+    if (n === "ai") { if (!sample) return; rAi(); }
     if (n === "act") { $("#a-msg").textContent = ""; $("#a-msg").className = "msg"; if (!["#a-min", "#a-km", "#a-kcal", "#a-hr"].some(i => $(i).value)) $("#a-type").value = plannedOr($("#a-type").value); actFields(true); }
     openSheet(n);
     if (t.dataset.gpx) $("#a-gpx").click();
@@ -1995,7 +2263,7 @@ document.addEventListener("click", e => {
   }
   if (t.dataset.delEv) { const p = clone(S.profile); p.events = events().filter(x => x.id !== t.dataset.delEv); if (p.target === t.dataset.delEv) p.target = ""; profFilled = false; return saveProfile(p); }
   if (t.dataset.targetEv) { const p = clone(S.profile); p.target = t.dataset.targetEv; return saveProfile(p); }
-  if (t.dataset.useFood) { const fd = t.dataset.useFood, gr = String(num($("#c-g").value) > 0 ? num($("#c-g").value) : 100).replace(".", ","); openMeal(null); $("#f-name").value = fd; $("#f-g").value = gr; fromTable(false); mealFields(true); mealList(); return; }
+  if (t.dataset.useFood) { const fd = t.dataset.useFood, gr = String(num($("#c-g").value) > 0 ? num($("#c-g").value) : 100).replace(".", ","); openMeal(null); $("#f-name").value = fd; const hit = findFood(fd); if (hit && !hit[5]) { $("#f-g").value = ""; fromTable(true); } else { $("#f-g").value = gr; fromTable(false); } mealFields(true); mealList(); rKeep(); return; }
   if (t.dataset.delInj) { const p = clone(S.profile); p.injuries = injuries().filter(i => i.id !== t.dataset.delInj); return saveProfile(p); }
   if (t.dataset.delGlu) { const d = getDay(S.date); d.glu = (d.glu || []).filter(g => g.id !== t.dataset.delGlu); return saveDay(d); }
   if (t.dataset.delMeal) { const d = getDay(S.date); d.meals = d.meals.filter(m => m.id !== t.dataset.delMeal); return saveDay(d); }

@@ -134,10 +134,10 @@ const EPC = (() => {
   /* Reintenta sola lo que se puede repetir sin riesgo: «ocupado» siempre (el servidor no llegó a hacer nada) y, si falla la red
      o tarda, las operaciones que dan lo mismo hechas una vez que dos. */
   const SAFE = ["pub", "load", "login", "save", "register", "a_hello", "a_list", "a_get"];
-  async function api(url, body) {
+  async function api(url, body, ms) {
     const waits = [1500, 4000];
     for (let i = 0; ; i++) {
-      try { return await once(url, body, 40000); }
+      try { return await once(url, body, ms || 40000); }
       catch (e) {
         const again = e.code === "ocupado" || ((e.code === "red" || e.code === "lento") && SAFE.includes(body.op));
         if (!again || i >= waits.length) throw e;
