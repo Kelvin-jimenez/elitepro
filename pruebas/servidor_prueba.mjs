@@ -43,7 +43,7 @@ const ctx = {
   Logger: { log() {} }, console
 };
 vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'nube', 'Code.gs'), 'utf8') + '\nthis.doPost = doPost; this.prepararElitepro = prepararElitepro;', ctx);
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   if (u.pathname === '/api' && req.method === 'POST') { let b = ''; req.on('data', c => { b += c; }); req.on('end', () => { const out = ctx.doPost({ postData: { contents: b } }); let op = ''; try { op = JSON.parse(b).op; } catch (e) { /* cuerpo raro */ } setTimeout(() => { res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }); res.end(out.s); }, delay.op === op ? delay.ms : 0); }); return; }

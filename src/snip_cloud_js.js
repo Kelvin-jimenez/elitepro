@@ -110,7 +110,12 @@ document.body.insertAdjacentHTML("beforeend", `<dialog class="sheet" id="sh-clou
 </div></dialog>
 <style>.chk{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;color:var(--ink-2);line-height:1.4;cursor:pointer}.chk input{width:20px;height:20px;flex:0 0 auto;margin-top:1px;accent-color:var(--mark)}#cl-body a,#cl-form a{color:var(--ink);text-decoration:underline}#cl-form input[type="email"],#cl-form input[type="password"]{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%;min-width:0;color:var(--ink);font:inherit}</style>`);
 $("#v-need").insertAdjacentHTML("beforeend", `<div><button class="btn ghost" type="button" data-cl="login">Ya tengo cuenta en la nube</button></div>`);
+/* Aviso en Hoy para quien aún no tiene cuenta: una línea que se puede cerrar */
+$("#v-hoy .dash").insertAdjacentHTML("beforebegin", `<div class="card" id="cl-cta" hidden style="flex-direction:row;align-items:center;gap:10px 12px;flex-wrap:wrap;padding:14px 18px"><span style="flex:1 1 240px;min-width:0"><b>Guarda tus datos en la nube.</b> <span class="sub">No se pierden si cambias de móvil. Hace falta un código de invitación.</span></span><button class="btn sm" type="button" data-cl="register">Crear cuenta</button><button class="btn ghost sm" type="button" data-cl="login">Ya tengo cuenta</button><button class="icon-btn" type="button" id="cl-cta-x" aria-label="No mostrar más este aviso">×</button></div>`);
+function cCta() { let off = false; try { off = localStorage.getItem("elitepro:cta:" + users.current) === "1"; } catch (e) { off = false; } $("#cl-cta").hidden = cOn() || off || !S.profile || S.mode !== "local"; }
+$("#cl-cta-x").addEventListener("click", () => { try { localStorage.setItem("elitepro:cta:" + users.current, "1"); } catch (e) { /* sin almacenamiento */ } $("#cl-cta").hidden = true; });
 function cSet(st) {
+  cCta();
   cState = st; const chip = $("#cl-chip"), body = $("#cl-body"); if (!body) return;
   const on = !!(cs && cs.token), bad = st === "err" || st === "llave";
   chip.hidden = !cOn(); chip.textContent = !cOn() ? "" : st === "sync" ? "Sincronizando" : st === "llave" ? "En pausa" : st === "err" ? "Sin conexión" : !on ? "Sesión caducada" : "Conectada"; chip.className = "chip" + (on && !bad ? " done" : "");
@@ -199,6 +204,6 @@ document.addEventListener("click", e => {
 }, true);
 /* Enganches: al arrancar, al cambiar de persona y al volver a la app */
 const cGo = goLocal; goLocal = function (note) { cGo(note); cLoad(); cSet(cState); cNote(); if (cs && cs.token) cSync(true); };
-const cRender = render; render = function () { cRender(); if (csFor !== null && csFor !== users.current) { cLoad(); cSet(cState); cNote(); if (cs && cs.token) cSync(true); } };
+const cRender = render; render = function () { cRender(); cCta(); if (csFor !== null && csFor !== users.current) { cLoad(); cSet(cState); cNote(); if (cs && cs.token) cSync(true); } };
 document.addEventListener("visibilitychange", () => { if (!document.hidden && cs && cs.token && Date.now() - (cs.at || 0) > 60000) cSync(true); });
 window.addEventListener("online", () => { if (cs && cs.token) cSync(true); });

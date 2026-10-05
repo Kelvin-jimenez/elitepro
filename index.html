@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20150%20150%22%3E%3Crect%20width%3D%22150%22%20height%3D%22150%22%20rx%3D%2230%22%20fill%3D%22%2310161d%22/%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%2275%22%20r%3D%2252%22%20fill%3D%22none%22%20stroke%3D%22%232a323b%22%20stroke-width%3D%2211%22/%3E%3Ccircle%20cx%3D%2275%22%20cy%3D%2275%22%20r%3D%2252%22%20fill%3D%22none%22%20stroke%3D%22%23ffd400%22%20stroke-width%3D%2211%22%20stroke-linecap%3D%22round%22%20stroke-dasharray%3D%22245%20327%22%20transform%3D%22rotate%28-90%2075%2075%29%22/%3E%3Crect%20x%3D%2255%22%20y%3D%2250%22%20width%3D%229%22%20height%3D%2250%22%20fill%3D%22%23fff%22/%3E%3Crect%20x%3D%2264%22%20y%3D%2250%22%20width%3D%2232%22%20height%3D%2210%22%20fill%3D%22%233987e5%22/%3E%3Crect%20x%3D%2264%22%20y%3D%2270%22%20width%3D%2223%22%20height%3D%2210%22%20fill%3D%22%23eb6834%22/%3E%3Crect%20x%3D%2264%22%20y%3D%2290%22%20width%3D%2232%22%20height%3D%2210%22%20fill%3D%22%231baf7a%22/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#080a0d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Elitepro">
+<link rel="apple-touch-icon" href="icons/apple-180.png">
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Elitepro</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700;800&display=swap">
@@ -562,6 +569,11 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
         <div class="card-head"><div class="eyebrow">Cuenta en la nube</div><span class="chip" id="cl-chip" hidden></span></div>
         <hr class="rule">
         <div id="cl-body" class="col" style="gap:12px"></div>
+      </div>
+      <div class="card" id="pwa-card" data-nodirty hidden>
+        <div class="eyebrow">Instalar en el móvil</div>
+        <hr class="rule">
+        <div id="pwa-body" class="col" style="gap:10px"></div>
       </div>
       <div class="card">
         <div class="eyebrow">Copia de seguridad</div>
@@ -1923,7 +1935,12 @@ document.body.insertAdjacentHTML("beforeend", `<dialog class="sheet" id="sh-clou
 </div></dialog>
 <style>.chk{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;color:var(--ink-2);line-height:1.4;cursor:pointer}.chk input{width:20px;height:20px;flex:0 0 auto;margin-top:1px;accent-color:var(--mark)}#cl-body a,#cl-form a{color:var(--ink);text-decoration:underline}#cl-form input[type="email"],#cl-form input[type="password"]{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%;min-width:0;color:var(--ink);font:inherit}</style>`);
 $("#v-need").insertAdjacentHTML("beforeend", `<div><button class="btn ghost" type="button" data-cl="login">Ya tengo cuenta en la nube</button></div>`);
+/* Aviso en Hoy para quien aún no tiene cuenta: una línea que se puede cerrar */
+$("#v-hoy .dash").insertAdjacentHTML("beforebegin", `<div class="card" id="cl-cta" hidden style="flex-direction:row;align-items:center;gap:10px 12px;flex-wrap:wrap;padding:14px 18px"><span style="flex:1 1 240px;min-width:0"><b>Guarda tus datos en la nube.</b> <span class="sub">No se pierden si cambias de móvil. Hace falta un código de invitación.</span></span><button class="btn sm" type="button" data-cl="register">Crear cuenta</button><button class="btn ghost sm" type="button" data-cl="login">Ya tengo cuenta</button><button class="icon-btn" type="button" id="cl-cta-x" aria-label="No mostrar más este aviso">×</button></div>`);
+function cCta() { let off = false; try { off = localStorage.getItem("elitepro:cta:" + users.current) === "1"; } catch (e) { off = false; } $("#cl-cta").hidden = cOn() || off || !S.profile || S.mode !== "local"; }
+$("#cl-cta-x").addEventListener("click", () => { try { localStorage.setItem("elitepro:cta:" + users.current, "1"); } catch (e) { /* sin almacenamiento */ } $("#cl-cta").hidden = true; });
 function cSet(st) {
+  cCta();
   cState = st; const chip = $("#cl-chip"), body = $("#cl-body"); if (!body) return;
   const on = !!(cs && cs.token), bad = st === "err" || st === "llave";
   chip.hidden = !cOn(); chip.textContent = !cOn() ? "" : st === "sync" ? "Sincronizando" : st === "llave" ? "En pausa" : st === "err" ? "Sin conexión" : !on ? "Sesión caducada" : "Conectada"; chip.className = "chip" + (on && !bad ? " done" : "");
@@ -2012,11 +2029,27 @@ document.addEventListener("click", e => {
 }, true);
 /* Enganches: al arrancar, al cambiar de persona y al volver a la app */
 const cGo = goLocal; goLocal = function (note) { cGo(note); cLoad(); cSet(cState); cNote(); if (cs && cs.token) cSync(true); };
-const cRender = render; render = function () { cRender(); if (csFor !== null && csFor !== users.current) { cLoad(); cSet(cState); cNote(); if (cs && cs.token) cSync(true); } };
+const cRender = render; render = function () { cRender(); cCta(); if (csFor !== null && csFor !== users.current) { cLoad(); cSet(cState); cNote(); if (cs && cs.token) cSync(true); } };
 document.addEventListener("visibilitychange", () => { if (!document.hidden && cs && cs.token && Date.now() - (cs.at || 0) > 60000) cSync(true); });
 window.addEventListener("online", () => { if (cs && cs.token) cSync(true); });
+/* ---------- App instalable: icono en la pantalla de inicio, pantalla completa y uso sin conexión ---------- */
+let pwaEvt = null;
+const pwaIn = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+function pwaPaint() {
+  const card = $("#pwa-card"); if (!card) return;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  card.hidden = pwaIn() || location.protocol.indexOf("http") !== 0;
+  $("#pwa-body").innerHTML = pwaEvt ? `<p class="sub">Ponla en la pantalla de inicio: se abre a pantalla completa, con su icono, y funciona sin conexión.</p><div class="row"><button class="btn" type="button" id="pwa-go">Instalar Elitepro</button></div>`
+    : ios ? `<p class="sub">En iPhone o iPad, con Safari: pulsa el botón <b>Compartir</b> y elige <b>«Añadir a pantalla de inicio»</b>. Se abre a pantalla completa, con su icono, y funciona sin conexión.</p><p class="sub"><b>Antes, crea tu cuenta en la nube.</b> En iPhone la app instalada empieza vacía; al abrirla, entra con tu cuenta y recuperas todos tus datos.</p>`
+    : `<p class="sub">En el menú del navegador (⋮) elige <b>«Instalar aplicación»</b> o <b>«Añadir a pantalla de inicio»</b>. Se abre a pantalla completa, con su icono, y funciona sin conexión.</p>`;
+}
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); pwaEvt = e; pwaPaint(); });
+window.addEventListener("appinstalled", () => { pwaEvt = null; pwaPaint(); toast("Elitepro instalada."); });
+document.addEventListener("click", async e => { if (!e.target.closest("#pwa-go") || !pwaEvt) return; const ev = pwaEvt; pwaEvt = null; ev.prompt(); try { await ev.userChoice; } catch (x) { /* cerrado */ } pwaPaint(); });
+pwaPaint();
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) navigator.serviceWorker.register("sw.js").catch(() => { /* sin soporte: la app sigue funcionando con conexión */ });
 /* ---------- Versión: cuando hay una publicación nueva, la app se actualiza sola (o avisa si estás a medias de algo) ---------- */
-const BUILD = "6a08af704ea2";
+const BUILD = "46f17ecdbc7f";
 async function upGo(v) {
   try { sessionStorage.setItem("elitepro:upd", v); } catch (e) { /* sin almacenamiento */ }
   try { await fetch(location.pathname, { cache: "reload" }); } catch (e) { /* sin conexión */ } // renueva la copia guardada por el navegador

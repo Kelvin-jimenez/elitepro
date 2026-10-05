@@ -14,6 +14,7 @@ Todo está en un único archivo, `index.html`. Los datos de cada persona se guar
 - `src/elitepro.html`: la fuente (es la versión que se publica dentro de Claude).
 - `build.py`: genera `index.html`, la versión web, a partir de la fuente. Se ejecuta con `python3 build.py`.
 - `index.html`: lo que sirve la web. No se edita a mano.
+- `manifest.webmanifest`, `sw.js`, `icons/`: hacen que la web se pueda instalar en el móvil (icono, pantalla completa) y que abra sin conexión. Con red, `sw.js` pide siempre la página al servidor; sin red, sirve la última copia. Los iconos se regeneran con `node src/hacer_iconos.mjs`.
 - `version.json`: huella de la última publicación. La web la consulta al abrirse y al volver a ella; si es distinta de la suya, se recarga sola (o avisa con un botón si hay un formulario a medias).
 
 - `src/elitepro.fase1.html`: copia de seguridad de la fuente antes del rediseño de panel (fase 2).
@@ -71,6 +72,8 @@ En `pruebas/`, con Node y Playwright:
 - `node pruebas/reloj.test.mjs index.html`: importación de archivos del reloj.
 - `node pruebas/api.test.mjs`: el servidor, con una imitación local de los servicios de Google.
 - `ELITEPRO_NUBE_URL=/api python3 build.py /tmp/ep/index.html && node pruebas/nube.test.mjs /tmp/ep`: cuenta en la nube de punta a punta (dos dispositivos y el panel).
+- `node pruebas/pwa.test.mjs /tmp/ep`: app instalable, uso sin conexión y aviso de cuenta en Hoy.
+- `node pruebas/version.test.mjs /tmp/ep`: actualización automática.
 - `node pruebas/nube2.test.mjs /tmp/ep`: casos límite (guardados en curso, volver a entrar, empezar de cero, cambio de contraseña).
 
 ## Modo salud
