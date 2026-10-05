@@ -22,11 +22,13 @@ const canon = o => o === null || typeof o !== "object" ? String(JSON.stringify(o
 const h53 = str => { let a = 0xdeadbeef, b = 0x41c6ce57; for (let i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); a = Math.imul(a ^ ch, 2654435761); b = Math.imul(b ^ ch, 1597334677); } a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909); b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909); return (4294967296 * (2097151 & b) + (a >>> 0)).toString(36); };
 /* Cada dato tiene dos partes: la de entreno y nutrición, y la de salud (condición, límites del médico, lesiones, glucosa).
    La de salud solo sale del dispositivo con consentimiento expreso. */
-const cCore = (kind, o) => { if (!o) return null; const c = Object.assign({}, o); if (kind === "p") { delete c.health; delete c.injuries; } else delete c.glu; return c; };
+const cCore = (kind, o) => { if (!o) return null; const c = Object.assign({}, o); if (kind === "p") { delete c.health; delete c.injuries; delete c.medrem; } else delete c.glu; return c; };
+/* Los recordatorios de medicación (`medrem`) no se suben nunca, ni siquiera con el consentimiento de salud */
+const cLocal = (kind, o) => { if (kind !== "p" || !o || o.medrem === undefined) return o; const c = Object.assign({}, o); delete c.medrem; return c; };
 const cHealth = (kind, o) => { if (!o) return null; if (kind === "p") return (o.health && o.health.cond) || (o.injuries || []).length ? { health: o.health, injuries: o.injuries } : null; return (o.glu || []).length ? { glu: o.glu } : null; };
 const hC = (kind, o) => o ? h53(canon(cCore(kind, o))) : "";
 const hH = (kind, o) => { const x = cHealth(kind, o); return x ? h53(canon(x)) : ""; };
-const cOut = (me, kind, o) => (!o || me.health ? o : cCore(kind, o));
+const cOut = (me, kind, o) => (!o ? o : me.health ? cLocal(kind, o) : cCore(kind, o));
 function cSnap(me) { const days = {}; Object.keys(S.days).forEach(k => { days[k] = cOut(me, "d", S.days[k]); }); return { profile: cOut(me, "p", S.profile), days }; }
 const cEmpty = () => ({ c: { p: "", d: {} }, h: { p: "", d: {} } });
 function cHashes(me, data) { const b = cEmpty(); b.c.p = hC("p", data.profile); if (me.health) b.h.p = hH("p", data.profile); Object.keys(data.days || {}).forEach(k => { b.c.d[k] = hC("d", data.days[k]); const x = me.health ? hH("d", data.days[k]) : ""; if (x) b.h.d[k] = x; }); return b; }
@@ -48,7 +50,7 @@ function cMerge(me, R, adopt, fresh) {
     else if (adopt || fresh) { hp = rh || lh; if (rh && hH(kind, rem) !== hH(kind, loc)) changed = true; }
     else if (hH(kind, loc) !== bh) hp = lh;
     else { hp = rh; if (hH(kind, rem) !== bh) changed = true; }
-    return Object.assign({}, core, hp || {});
+    return Object.assign({}, core, hp || {}, kind === "p" && loc && loc.medrem !== undefined ? { medrem: loc.medrem } : {});
   };
   out.profile = keep("p", S.profile, R.profile, B.c.p, B.h.p);
   new Set(Object.keys(S.days).concat(Object.keys(rd))).forEach(k => { const v = keep("d", S.days[k], rd[k], B.c.d[k] || "", B.h.d[k] || ""); if (v) out.days[k] = v; });

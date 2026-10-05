@@ -29,7 +29,7 @@ if cfg['url']:
     card = (snip / 'snip_cloud_card.html').read_text(encoding='utf8') + card
     js = js + core + fill((snip / 'snip_cloud_js.js').read_text(encoding='utf8'), jsesc)
 # App instalable: tarjeta en Perfil, registro del service worker y comprobación de versión
-js = js + (snip / 'snip_pwa_js.js').read_text(encoding='utf8') + (snip / 'snip_update_js.js').read_text(encoding='utf8')
+js = js + (snip / 'snip_rem_js.js').read_text(encoding='utf8') + (snip / 'snip_pwa_js.js').read_text(encoding='utf8') + (snip / 'snip_update_js.js').read_text(encoding='utf8')
 rep('      <div class="card">\n        <div class="eyebrow">Empezar de cero</div>', card + '      <div class="card">\n        <div class="eyebrow">Empezar de cero</div>')
 rep('/* ---------- Empezar de cero ---------- */', js + '/* ---------- Empezar de cero ---------- */')
 rep('goLocal("Estás sin sesión: lo que apuntes se guarda solo en este navegador.")', 'goLocal("Lo que apuntes se guarda solo en este navegador. Descarga una copia de vez en cuando desde Perfil.")')

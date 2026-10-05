@@ -191,6 +191,14 @@ document.addEventListener("click", async e => {
   if (t.dataset.delYes !== undefined && cur) { try { await call({ op: "a_delete", id: cur.id }); cur = null; $("#detail").hidden = true; await refresh(); } catch (err) { /* aviso ya mostrado */ } }
 });
 
+const SLOTN = { des: "Desayuno", mm: "Media mañana", com: "Comida", mer: "Merienda", cen: "Cena", ent: "Antes o después de entrenar" };
+function planHtml(p) {
+  const d = p && p.diet; if (!d) return "";
+  const items = Object.keys(SLOTN).flatMap(k => ((d.slots || {})[k] || []).map(m => Object.assign({ k }, m)));
+  const t = items.length ? items.reduce((a, x) => ({ kcal: a.kcal + (x.kcal || 0), p: a.p + (x.p || 0), c: a.c + (x.c || 0), f: a.f + (x.f || 0) }), { kcal: 0, p: 0, c: 0, f: 0 }) : d.tot;
+  if (!t || !(t.kcal > 0)) return "";
+  return `<div><div class="eyebrow">Plan pautado${d.by ? " por " + esc(d.by) : ""}</div><p>${nf(t.kcal)} kcal · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g</p>${items.length ? `<p class="sub">${Object.keys(SLOTN).filter(k => items.some(m => m.k === k)).map(k => "<b>" + SLOTN[k] + ":</b> " + items.filter(m => m.k === k).map(m => esc(m.name) + (m.g ? " " + nf(m.g) + " g" : "")).join(", ")).join(" · ")}</p>` : ""}</div>`;
+}
 async function see(id) {
   const box = $("#detail"); box.hidden = false; box.innerHTML = `<p class="msg">Descifrando…</p>`; box.scrollIntoView({ block: "start", behavior: "smooth" });
   try {
@@ -203,6 +211,7 @@ async function see(id) {
     box.innerHTML = `<div class="row" style="justify-content:space-between"><h2>${esc(p.name || r.email)}</h2><div class="row"><button class="btn ghost sm" type="button" data-save>Descargar copia</button><button class="btn danger sm" type="button" data-del>Borrar cuenta</button><span id="del-ask" class="row" hidden><span class="msg err">¿Borrar su cuenta y sus datos del servidor?</span><button class="btn danger sm" type="button" data-del-yes>Sí, borrar</button><button class="btn ghost sm" type="button" data-del-no>Cancelar</button></span></div></div>
       <p class="sub">${esc(r.email)} · ${esc(r.consent)}</p>
       ${data.profile ? `<dl><div><dt>Edad</dt><dd>${esc(p.age)} años</dd></div><div><dt>Altura</dt><dd>${esc(p.height)} cm</dd></div><div><dt>Peso</dt><dd>${nf(p.weight, 1)} kg</dd></div><div><dt>Objetivo</dt><dd>${esc(GOALS[p.goal] || p.goal || "—")}</dd></div><div><dt>Pruebas</dt><dd>${(p.events || []).map(ev => esc(ev.name) + " (" + esc(ev.date) + ")").join(", ") || "—"}</dd></div></dl>` : `<p class="sub">Todavía no ha rellenado su perfil.</p>`}
+      ${planHtml(p)}
       ${r.health && data.profile ? `<div><div class="eyebrow">Salud (con consentimiento expreso)</div><p>${esc(COND[h.cond] || "Sin condición indicada")}${h.hcDay > 0 ? " · máximo " + nf(h.hcDay) + " g de hidratos al día" : ""}${h.hcMeal > 0 ? " · " + nf(h.hcMeal) + " g por comida" : ""}${h.protMax > 0 ? " · proteína máxima " + nf(h.protMax) + " g" : ""}</p><p class="sub">${inj.length ? "Lesiones o molestias: " + inj.map(i => esc(SEV[i.sev] || "") + " · " + esc(i.zone) + (i.note ? " (" + esc(i.note) + ")" : "")).join("; ") : "Sin lesiones apuntadas."}</p>${glu.length ? `<p class="sub">Glucosa (últimas lecturas): ${glu.map(g => esc(g.d.slice(5)) + " " + esc(g.t || "") + " → " + nf(g.v) + " mg/dl").join(" · ")}</p>` : ""}</div>` : `<p class="sub">No ha dado consentimiento para sus datos de salud: no se suben ni se muestran.</p>`}
       <div class="scroll"><table><thead><tr><th>Día</th><th class="r">Kcal</th><th class="r">Proteína</th><th class="r">Hidratos</th><th class="r">Grasa</th><th>Entrenos</th><th class="r">Peso</th></tr></thead><tbody>${days.slice(0, 60).map(d => { const m = d.meals || [], s = k => m.reduce((a, b) => a + (Number(b[k]) || 0), 0); return `<tr><td>${esc(d.date)}</td><td class="r">${m.length ? nf(s("kcal")) : "—"}</td><td class="r">${m.length ? nf(s("p")) + " g" : "—"}</td><td class="r">${m.length ? nf(s("c")) + " g" : "—"}</td><td class="r">${m.length ? nf(s("f")) + " g" : "—"}</td><td>${(d.acts || []).map(a => esc(TYPES[a.type] || a.type) + (a.min ? " " + nf(a.min) + "′" : "") + (a.km ? " " + nf(a.km, 1) + " km" : "")).join(", ") || "—"}</td><td class="r">${d.weight > 0 ? nf(d.weight, 1) + " kg" : "—"}</td></tr>`; }).join("") || `<tr><td colspan="7" class="sub">Sin días apuntados.</td></tr>`}</tbody></table></div>
       <p class="sub">Se muestran los últimos 60 días. «Descargar copia» baja todos sus datos en un archivo que la app puede recuperar.</p>`;

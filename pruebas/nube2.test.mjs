@@ -50,7 +50,18 @@ try {
   await go(D, '#datos'); await D.click('#rs-ask'); await D.click('#rs-yes'); await D.waitForTimeout(4500);
   await syncNow(A); a = await local(A); ok('«Empezar de cero» en un dispositivo no vacía la cuenta ni los demás', a.profile && a.profile.name === 'Marco' && meals(a) === 3 && !(await D.evaluate(() => Object.keys(localStorage).some(k => k.startsWith('elitepro:cloud:')))));
   // 6. cambio de contraseña: las demás sesiones caducan
-  await login(B, 'marco@ejemplo.com', 'clave-de-marco-1'); await go(A, '#datos'); await A.click('[data-cl="passwd"]'); await A.waitForTimeout(200); await A.fill('#cl-pass', 'clave-de-marco-1'); await A.fill('#cl-new', 'clave-nueva-de-marco'); await A.fill('#cl-pass2', 'clave-nueva-de-marco'); await A.click('#cl-go'); await closed(A);
+  await login(B, 'marco@ejemplo.com', 'clave-de-marco-1');
+  // 5b. recordatorios: los de medicación no salen del dispositivo ni con el consentimiento de salud; el plan sí llega al panel
+  await go(A, '#datos'); if (!(await A.isChecked('#cl-health'))) { await A.check('#cl-health'); await settle(A, 1200); }
+  for (const [kind, time] of [['med', '09:30'], ['comida', '08:00']]) { await A.click('#rem-box [data-sheet="rem"]'); await A.waitForTimeout(250); await A.selectOption('#r-kind', kind); await A.fill('#r-time', time); await A.click('#rem-form button[type=submit]'); await A.waitForTimeout(300); }
+  await A.click('#diet-box [data-sheet="diet"]'); await A.waitForTimeout(250); await A.click('#sh-diet details.how summary'); await A.fill('#dt-kcal', '1700'); await A.fill('#dt-p', '140'); await A.click('#dt-save'); await A.waitForTimeout(300); await A.keyboard.press('Escape');
+  await settle(A); await syncNow(B); let pb = (await local(B)).profile;
+  ok('otro dispositivo recibe el plan y el aviso de comida, pero no el de medicación', pb.diet && pb.diet.tot.kcal === 1700 && (pb.rem || []).length === 1 && pb.medrem === undefined, JSON.stringify([pb.diet, pb.rem, pb.medrem]));
+  d = await dump(); ok('servidor: consentimiento de salud activo y aun así nada de medicación', /datos de salud: sí/.test(d.sheets.usuarios[1][4]));
+  await weigh(B, '69,0'); await settle(B); await syncNow(A); const pa = (await local(A)).profile;
+  ok('quien lo creó conserva su aviso de medicación tras sincronizar', (pa.medrem || []).length === 1 && pa.medrem[0].time === '09:30' && (pa.rem || []).length === 1, JSON.stringify([pa.rem, pa.medrem]));
+  await C.click('#reload'); await C.waitForTimeout(500); await C.click('[data-see]'); await C.waitForSelector('#detail table', { timeout: 20000 });
+  ok('panel: el entrenador ve el plan pautado y ningún recordatorio de medicación', /Plan pautado/.test(await T(C, '#detail')) && /1\.?700 kcal/.test(await T(C, '#detail')) && !/09:30|Medicación/.test(await T(C, '#detail')), (await T(C, '#detail')).slice(0, 300)); await go(A, '#datos'); await A.click('[data-cl="passwd"]'); await A.waitForTimeout(200); await A.fill('#cl-pass', 'clave-de-marco-1'); await A.fill('#cl-new', 'clave-nueva-de-marco'); await A.fill('#cl-pass2', 'clave-nueva-de-marco'); await A.click('#cl-go'); await closed(A);
   await syncNow(A); ok('quien cambia la contraseña sigue conectado', /Conectada/.test(await T(A, '#cl-chip')));
   await go(B, '#datos'); await B.click('[data-cl="sync"]'); await B.waitForTimeout(1500); ok('los demás dispositivos tienen que volver a entrar', /caducada/i.test(await T(B, '#cl-chip')), await T(B, '#cl-chip'));
   // 7. la app solo cifra para la llave fijada

@@ -29,6 +29,12 @@ Todo está en un único archivo, `index.html`. Los datos de cada persona se guar
 
 Los formularios (comida, entreno, peso, glucosa, competición, entreno previsto) se abren en una hoja: desde abajo en móvil, centrada en escritorio. En móvil el botón `+` de la barra inferior abre el menú rápido.
 
+## Comidas, plan pautado y recordatorios
+
+- **Varios ingredientes por comida**: cada momento del día tiene un botón `+`. La hoja enseña lo que ya llevas en ese momento con su suma, y «+ Añadir otro» guarda el ingrediente y deja la hoja abierta para el siguiente. Cada ingrediente es una entrada más de `meals`, como siempre.
+- **Plan pautado** (`profile.diet`): el plan de comidas que le ha dado su nutricionista, por comidas (`slots`) o solo con los totales del día (`tot`). En Hoy se compara con lo que pide el día según el entreno: encaja si queda a ±10 %, se queda corto por debajo y sobra por encima; se indica el macronutriente que más pesa en la diferencia. Es una orientación y así se dice en pantalla. Los momentos vacíos ofrecen «Apuntar lo pautado».
+- **Recordatorios** (`profile.rem` y `profile.medrem`): avisos de comida, hidratación, medicación u otros, con hora y días. Cada uno abre Google Calendar con el evento relleno y repitiéndose; en la web, además, se descargan todos en un `.ics`. Los de medicación van aparte y no se suben a la nube.
+
 ## Entrenos desde el reloj
 
 «Importar del reloj» lee el archivo de la actividad y rellena el formulario para revisarlo antes de guardar:
@@ -70,6 +76,7 @@ En `pruebas/`, con Node y Playwright:
 
 - `node pruebas/app.test.mjs index.html`: la app (61 comprobaciones).
 - `node pruebas/reloj.test.mjs index.html`: importación de archivos del reloj.
+- `node pruebas/plan.test.mjs index.html`: ingredientes por comida, plan pautado y recordatorios.
 - `node pruebas/api.test.mjs`: el servidor, con una imitación local de los servicios de Google.
 - `ELITEPRO_NUBE_URL=/api python3 build.py /tmp/ep/index.html && node pruebas/nube.test.mjs /tmp/ep`: cuenta en la nube de punta a punta (dos dispositivos y el panel).
 - `node pruebas/pwa.test.mjs /tmp/ep`: app instalable, uso sin conexión y aviso de cuenta en Hoy.

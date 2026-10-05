@@ -100,7 +100,7 @@ main{min-width:0;width:100%;max-width:1200px;margin:0 auto;padding:30px clamp(18
 .three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 label.fld{display:flex;flex-direction:column;gap:5px;font-size:.8rem;font-weight:600;color:var(--muted);min-width:0}
-input[type="text"],input[type="number"],input[type="date"],select{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%;min-width:0;color:var(--ink)}
+input[type="text"],input[type="number"],input[type="date"],input[type="time"],select{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%;min-width:0;color:var(--ink)}
 input:focus,select:focus{outline:0;border-color:var(--mark);box-shadow:0 0 0 3px color-mix(in srgb,var(--mark) 18%,transparent)}
 .msg{font-size:.92rem;color:var(--ink-2);min-height:1.2em}
 .msg.err{color:var(--crit)}
@@ -172,6 +172,23 @@ dl.kv .over dd{color:var(--crit)}
 .slot[open]>summary>span:first-child::before{transform:rotate(90deg)}
 .slot summary b{font-family:var(--f-display);font-size:1.3rem;font-weight:600}
 .empty-slot{color:var(--muted);font-weight:500}
+.slot-r{display:flex;align-items:center;gap:10px}
+.slot-add{width:34px;height:34px;flex:0 0 auto;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-size:1.25rem;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
+.slot-add:hover{border-color:color-mix(in srgb,var(--mark) 65%,var(--line))}
+.linkbtn{background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;cursor:pointer;font-weight:600}
+.hlb{background:var(--mark);color:var(--on-mark);padding:1px 6px;border-radius:5px;font-weight:700}
+.mlist{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.mlist ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.mlist li{display:flex;justify-content:space-between;gap:10px;font-size:.92rem;color:var(--ink-2)}
+.mlist .mtot{border-top:1px solid var(--line);padding-top:7px;font-size:.92rem;color:var(--ink)}
+#diet-card{grid-column:1 / -1}
+.dslot{border-top:1px solid var(--line);padding-top:10px}
+.dslot-h{display:flex;align-items:center;gap:10px}.dslot-h b{flex:1 1 auto}
+.dtot{background:var(--surface-2);border-radius:12px;padding:11px 13px}
+.rems{list-style:none;margin:0;padding:0}
+.rems li{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.rems li:first-child{border-top:0}.rems li>span{flex:1 1 180px;min-width:0}
+.rems a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .falta{display:flex;flex-direction:column;gap:8px}
 .guide{font-weight:500;font-size:1.02rem}
 .guide b{font-weight:700;background:var(--mark);color:var(--on-mark);padding:0 5px;border-radius:4px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
@@ -374,6 +391,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
         <div id="d-macros"></div>
         <div class="card" id="train-card"><div id="d-sess" class="col" style="gap:14px"></div></div>
         <div class="card" id="nut-card"><div id="d-meals" class="col" style="gap:12px"></div></div>
+        <div class="card" id="diet-card" hidden><div id="d-diet" class="col" style="gap:12px"></div></div>
         <div class="card" id="falta-card"><div id="d-falta" class="col" style="gap:12px"></div></div>
         <div class="side-cards">
           <div class="card" id="peso-card"><div id="d-peso" class="col" style="gap:10px"></div></div>
@@ -565,6 +583,17 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
         <button class="btn" type="submit">Guardar mis datos</button>
         <p id="p-msg" class="msg" aria-live="polite"></p>
       </div>
+      <div class="card" data-nodirty>
+        <div class="eyebrow">Plan de nutrición pautado</div>
+        <hr class="rule">
+        <div id="diet-box" class="col" style="gap:10px"></div>
+      </div>
+      <div class="card" data-nodirty>
+        <div class="eyebrow">Recordatorios</div>
+        <hr class="rule">
+        <div id="rem-box" class="col" style="gap:10px"></div>
+        <div id="rem-extra"></div>
+      </div>
       <div class="card" id="cloud-card" data-nodirty>
         <div class="card-head"><div class="eyebrow">Cuenta en la nube</div><span class="chip" id="cl-chip" hidden></span></div>
         <hr class="rule">
@@ -629,6 +658,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
   </div>
   <form id="f-form" autocomplete="off">
     <div id="f-fields" class="col" style="gap:12px" hidden>
+      <div id="f-list" class="mlist" hidden></div>
       <div class="row">
         <label class="fld mid">Momento<select id="f-slot"></select></label>
         <label class="fld wide">Qué has comido<input id="f-name" type="text" list="foods" placeholder="Pollo con arroz, o elige de la lista"></label>
@@ -645,7 +675,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
         <label class="fld">Azúcares (g)<input id="f-az" type="text" inputmode="decimal"></label>
         <label class="fld">Fibra (g)<input id="f-fi" type="text" inputmode="decimal"></label>
       </div>
-      <div class="row actions"><button class="btn" type="submit" id="f-submit">Añadir</button></div>
+      <div class="row actions"><button class="btn" type="submit" id="f-submit">Añadir</button><button class="btn ghost" type="button" id="f-more">+ Añadir otro</button></div>
     </div>
     <p id="f-msg" class="msg" aria-live="polite"></p>
   </form>
@@ -707,6 +737,28 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
     <div class="row actions"><button class="btn" type="submit">Apuntar</button></div>
   </form>
   <p class="sub">Orientación general. No sustituye a tu médico ni ajusta medicación.</p>
+</div></dialog>
+
+<dialog class="sheet" id="sh-diet" aria-labelledby="sh-diet-t"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="sh-diet-t">Tu plan pautado</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div id="diet-body" class="col" style="gap:12px"></div>
+</div></dialog>
+
+<dialog class="sheet" id="sh-rem" aria-labelledby="sh-rem-t"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="sh-rem-t">Nuevo recordatorio</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <form id="rem-form" autocomplete="off">
+    <div class="row">
+      <label class="fld mid">De qué<select id="r-kind"><option value="comida">Comida</option><option value="agua">Hidratación</option><option value="med">Medicación</option><option value="otro">Otro</option></select></label>
+      <label class="fld wide">Texto del aviso<input id="r-title" type="text" maxlength="60" placeholder="Desayuno"></label>
+    </div>
+    <div class="row">
+      <label class="fld">Hora<input id="r-time" type="time" required></label>
+      <label class="fld wide">Días<select id="r-days"><option value="all">Todos los días</option><option value="lv">De lunes a viernes</option></select></label>
+    </div>
+    <p class="sub" id="r-note"></p>
+    <div class="row actions"><button class="btn" type="submit">Guardar</button></div>
+    <p id="r-msg" class="msg" aria-live="polite"></p>
+  </form>
 </div></dialog>
 
 <dialog class="sheet" id="sh-ev" aria-labelledby="sh-ev-t"><div class="sheet-in">
@@ -1030,6 +1082,7 @@ function render() {
   if (loading) return;
   rInj();
   fillProfileForm();
+  rDietCard(); rRem();
   if (need) return;
   $("#glu-card").hidden = !isDm(); $("#pg-glu").hidden = !isDm(); $("#f-health").hidden = !health().cond; $("#q-glu").hidden = !isDm();
   if (S.tab === "hoy") rHoy();
@@ -1108,14 +1161,15 @@ function rHoy() {
     </div>`;
 
   /* --- nutrición: resumen por momentos, detalle al desplegar --- */
-  const meals = day.meals || [], MAINS = ["des", "com", "mer", "cen"];
+  const meals = day.meals || [], MAINS = ["des", "com", "mer", "cen"], dplan = diet(), dslots = (dplan && dplan.slots) || {};
   $("#d-meals").innerHTML = `
     <div class="card-head"><span class="eyebrow">Nutrición</span><span class="sub num">${meals.length ? nf(tot.kcal) + " kcal apuntadas" : "Sin comidas apuntadas"}</span></div>
     <div class="slots">${SLOTS.map(([k, n]) => {
-      const ms = meals.filter(m => m.slot === k); if (!ms.length && !MAINS.includes(k)) return "";
-      if (!ms.length) return `<div class="slot empty-slot"><span>${n}</span><span>—</span></div>`;
+      const ms = meals.filter(m => m.slot === k), pl = dslots[k] || []; if (!ms.length && !MAINS.includes(k) && !pl.length) return "";
+      const add = `<button class="slot-add" type="button" data-add-slot="${k}" aria-label="Añadir a ${n.toLowerCase()}">+</button>`;
+      if (!ms.length) return `<div class="slot empty-slot"><span>${n}</span><span class="slot-r">${pl.length ? `<button class="btn ghost sm" type="button" data-log-plan="${k}">Apuntar lo pautado</button>` : ""}${add}</span></div>`;
       const kc = ms.reduce((x, m) => x + m.kcal, 0), hc = ms.reduce((x, m) => x + (m.c || 0), 0), overL = hl.cond && hl.hcMeal > 0 && hc > hl.hcMeal;
-      return `<details class="slot" data-slot="${k}" ${openSlots.has(k) ? "open" : ""}><summary><span>${n}${overL ? ` <span class="chip bad">Supera tu límite</span>` : ""}</span><span class="num"><b>${nf(kc)}</b> kcal${hl.cond ? ` · ${nf(hc)} g HC (${rac(hc)} rac.)` : ""}</span></summary>
+      return `<details class="slot" data-slot="${k}" ${openSlots.has(k) ? "open" : ""}><summary><span>${n}${overL ? ` <span class="chip bad">Supera tu límite</span>` : ""}</span><span class="slot-r"><span class="num"><b>${nf(kc)}</b> kcal${hl.cond ? ` · ${nf(hc)} g HC (${rac(hc)} rac.)` : ""}</span>${add}</span></summary>
         <ul class="meals">${ms.map(m => `<li>
           <span>${esc(m.name)}${m.g ? ` <span class="num" style="color:var(--muted)">${nf(m.g)} g</span>` : ""}${m.ia ? ` <span class="chip">IA</span>` : ""}</span>
           <span class="kc num">${nf(m.kcal)}</span>
@@ -1124,7 +1178,29 @@ function rHoy() {
           <small class="num">P ${nf(m.p)} · H ${nf(m.c)} · G ${nf(m.f)} g${hl.cond && m.az > 0 ? " · azúcares " + nf(m.az) + " g" : ""}</small>
         </li>`).join("")}</ul></details>`;
     }).join("")}</div>
-    <div class="row actions"><button class="btn" type="button" data-sheet="meal">+ Añadir comida</button><button class="btn ghost" type="button" data-sheet="calc">Buscar alimento</button></div>`;
+    <div class="row actions"><button class="btn" type="button" data-sheet="meal">+ Añadir comida</button><button class="btn ghost" type="button" data-sheet="calc">Buscar alimento</button></div>
+    ${dietTotals() ? "" : `<p class="sub"><button class="linkbtn" type="button" data-sheet="diet">¿Tienes un plan pautado por tu nutricionista? Añádelo</button> y te digo cada día si encaja con lo que entrenas.</p>`}`;
+
+  /* --- plan pautado frente a lo que pide el día --- */
+  const dtot = dietTotals(); $("#diet-card").hidden = !dtot;
+  if (dtot) {
+    const diff = dtot.kcal - t.kcal, rel = t.kcal > 0 ? diff / t.kcal : 0, st = rel < -0.10 ? "corto" : rel > 0.10 ? "sobra" : "encaja";
+    const actTxt = t.real ? "lo que has entrenado" : s.unset || s.type === "descanso" ? "un día sin entreno" : `${ty.n.toLowerCase()} de ${nf(s.min)}′`;
+    const gaps = dtot.macros ? [["hidratos", dtot.c - t.carb, 4], ["proteína", dtot.p - t.prot, 4], ["grasa", dtot.f - t.fat, 9]] : [];
+    const worst = gaps.filter(g => st === "corto" ? g[1] < -5 : st === "sobra" ? g[1] > 5 : false).sort((a, b) => Math.abs(b[1] * b[2]) - Math.abs(a[1] * a[2]))[0];
+    const line = st === "encaja" ? `Tu plan encaja con el día: ${actTxt}.`
+      : st === "corto" ? `Con ${actTxt}, tu plan se queda corto unas <b class="hlb">${nf(-diff)} kcal</b>${worst ? `, sobre todo en ${worst[0]} (unos ${nf(-worst[1])} g menos de lo que pide el día)` : ""}.`
+      : `Con ${actTxt}, tu plan te da unas <b class="hlb">${nf(diff)} kcal de más</b>${worst ? `, sobre todo en ${worst[0]} (unos ${nf(worst[1])} g de más)` : ""}.`;
+    const protLow = dtot.macros && dtot.p < 0.9 * t.prot && !(worst && worst[0] === "proteína");
+    const who = dplan.by ? esc(dplan.by) : "quien te lo ha pautado";
+    $("#d-diet").innerHTML = `
+      <div class="card-head"><span class="eyebrow">Tu plan pautado</span><span class="chip ${st === "encaja" ? "done" : st === "corto" ? "bad" : "now"}">${st === "encaja" ? "Encaja" : st === "corto" ? "Se queda corto" : "Sobra"}</span></div>
+      <dl class="kv"><div><dt>Tu plan</dt><dd class="num">${nf(dtot.kcal)} <small>kcal</small></dd></div><div><dt>${isToday ? "Hoy" : "Ese día"} necesitas</dt><dd class="num">${nf(t.kcal)} <small>kcal</small></dd></div><div><dt>Diferencia</dt><dd class="num">${diff > 0 ? "+" : diff < 0 ? "−" : ""}${nf(Math.abs(diff))} <small>kcal</small></dd></div></dl>
+      <p>${line}</p>
+      ${protLow ? `<p class="sub">La proteína del plan (${nf(dtot.p)} g) queda por debajo de lo que te toca (${nf(t.prot)} g).</p>` : ""}
+      <p class="sub">Es una orientación a partir de tu entreno y tus datos; no sustituye a tu plan. Antes de cambiar nada, coméntalo con ${who}.${dm ? " Con diabetes, no ajustes hidratos ni medicación por tu cuenta." : ""}</p>
+      <div class="row actions"><button class="btn ghost sm" type="button" data-sheet="diet">Ver o cambiar el plan</button></div>`;
+  }
 
   /* --- lo que te falta --- */
   const evT = eventOn(d), evM = eventOn(addDays(d, 1)), nextEv = events().filter(e => e.date > d).sort((a, b) => a.date < b.date ? -1 : 1)[0];
@@ -1447,7 +1523,7 @@ $("#p-form").addEventListener("submit", e => {
   }
   const first = !S.profile;
   profDirty = false;
-  saveProfile({ name: $("#p-name").value.trim().slice(0, 40), sex: $("#p-sex").value, age: Math.round(age), height, weight, activity: num($("#p-act").value), goal: $("#p-goal").value, plan: $("#p-plan").value, week, events: evs, target: tgt, health: readHealth(), injuries: clone(injuries()) });
+  saveProfile(Object.assign(S.profile ? { diet: S.profile.diet, rem: S.profile.rem, medrem: S.profile.medrem } : {}, { name: $("#p-name").value.trim().slice(0, 40), sex: $("#p-sex").value, age: Math.round(age), height, weight, activity: num($("#p-act").value), goal: $("#p-goal").value, plan: $("#p-plan").value, week, events: evs, target: tgt, health: readHealth(), injuries: clone(injuries()) }));
   msg.textContent = "Guardado."; msg.className = "msg";
   if (first) location.hash = "#hoy";
 });
@@ -1486,16 +1562,27 @@ function rCalc() {
     : `Escribe para buscar entre ${FOODS.length} alimentos. Valores aproximados; fíjate si es crudo o cocido.`;
 }
 $("#c-q").addEventListener("input", rCalc); $("#c-g").addEventListener("input", rCalc);
-let aiMeal = false, editMeal = null;
+let aiMeal = false, editMeal = null, mealMode = "day", mealAdded = 0;
 function mealFields(show) { $("#f-fields").hidden = !show; }
 function defaultSlot() { const h = new Date().getHours() + new Date().getMinutes() / 60; return h < 11 ? "des" : h < 13 ? "mm" : h < 16.5 ? "com" : h < 19.5 ? "mer" : "cen"; }
-function openMeal(id) {
-  const m = id ? ((S.days[S.date] || {}).meals || []).find(x => x.id === id) : null, sv = v => v > 0 ? String(v).replace(".", ",") : "";
+/* La hoja de comida sirve para apuntar lo de hoy («day») y para montar el plan pautado («plan»). Con `slot` se abre ya en ese momento del día. */
+function openMeal(id, slot, mode) {
+  mealMode = mode === "plan" ? "plan" : "day"; mealAdded = 0;
+  const m = id && mealMode === "day" ? ((S.days[S.date] || {}).meals || []).find(x => x.id === id) : null, sv = v => v > 0 ? String(v).replace(".", ",") : "";
   editMeal = m ? m.id : null; aiMeal = !!(m && m.ia);
-  $("#sh-meal-t").textContent = m ? "Editar comida" : "Añadir comida"; $("#f-submit").textContent = m ? "Guardar cambios" : "Añadir"; $("#f-choices").hidden = !!m;
-  $("#f-slot").value = m ? m.slot : defaultSlot(); $("#f-name").value = m ? m.name : ""; $("#f-g").value = m ? sv(m.g) : "";
+  $("#sh-meal-t").textContent = m ? "Editar comida" : mealMode === "plan" ? "Añadir al plan" : "Añadir comida"; $("#f-submit").textContent = m ? "Guardar cambios" : "Añadir";
+  $("#f-choices").hidden = !!m || mealMode === "plan"; $("#f-more").hidden = !!m;
+  $("#f-slot").value = m ? m.slot : slot || defaultSlot(); $("#f-name").value = m ? m.name : ""; $("#f-g").value = m ? sv(m.g) : "";
   $("#f-kcal").value = m ? String(m.kcal) : ""; $("#f-p").value = m ? sv(m.p) : ""; $("#f-c").value = m ? sv(m.c) : ""; $("#f-f").value = m ? sv(m.f) : ""; $("#f-az").value = m ? sv(m.az) : ""; $("#f-fi").value = m ? sv(m.fi) : "";
-  $("#f-msg").textContent = ""; $("#f-msg").className = "msg"; mealFields(!!m); openSheet("meal");
+  $("#f-msg").textContent = ""; $("#f-msg").className = "msg"; mealFields(!!m || !!slot || mealMode === "plan"); mealList(); openSheet("meal");
+}
+/* Lo que ya hay en ese momento del día (o del plan) y su suma, para ir añadiendo ingredientes */
+function mealList() {
+  const k = $("#f-slot").value, box = $("#f-list"), name = ((SLOTS.find(x => x[0] === k) || [])[1] || "").toLowerCase();
+  const items = mealMode === "plan" ? (((diet() || {}).slots || {})[k] || []) : ((S.days[S.date] || {}).meals || []).filter(m => m.slot === k && m.id !== editMeal);
+  box.hidden = !items.length; if (!items.length) return;
+  const t = items.reduce((a, x) => ({ kcal: a.kcal + (x.kcal || 0), p: a.p + (x.p || 0), c: a.c + (x.c || 0), f: a.f + (x.f || 0) }), { kcal: 0, p: 0, c: 0, f: 0 });
+  box.innerHTML = `<div class="eyebrow">${mealMode === "plan" ? "En el plan, en" : "Ya llevas en"} ${esc(name)}</div><ul>${items.map(m => `<li><span>${esc(m.name)}${m.g ? " · " + nf(m.g) + " g" : ""}</span><span class="num">${nf(m.kcal)} kcal</span></li>`).join("")}</ul><p class="mtot num">Suma: <b>${nf(t.kcal)} kcal</b> · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g</p>`;
 }
 function fromTable(setGrams) {
   const f = findFood($("#f-name").value); if (!f) return;
@@ -1507,20 +1594,105 @@ function fromTable(setGrams) {
 }
 $("#f-name").addEventListener("input", () => fromTable(true));
 $("#f-g").addEventListener("input", () => fromTable(false));
-$("#f-form").addEventListener("submit", e => {
-  e.preventDefault();
-  const name = $("#f-name").value.trim(), kcal = num($("#f-kcal").value), msg = $("#f-msg");
-  if (!name || !(kcal >= 0)) { msg.textContent = sample ? "Pon qué has comido y sus calorías, o pulsa Calcular con IA." : "Pon qué has comido y sus calorías."; msg.className = "msg err"; return; }
+$("#f-slot").addEventListener("change", mealList);
+/* `stay`: añade y deja la hoja abierta para el siguiente ingrediente */
+function addMeal(stay) {
+  const name = $("#f-name").value.trim(), kraw = $("#f-kcal").value.trim(), kcal = num(kraw), msg = $("#f-msg");
+  if (!stay && !name && !kraw && mealAdded) return closeSheets(); // ya añadió lo que quería: solo cerrar
+  if (!name || !(kcal >= 0)) { msg.textContent = sample ? "Pon qué has comido y sus calorías, o pulsa Calcular con IA." : "Pon qué es y sus calorías, o elígelo de la lista."; msg.className = "msg err"; return; }
   const v = id => { const n = num($(id).value); return n > 0 ? n : 0; };
-  const d = getDay(S.date);
   const rec = { id: editMeal || uidGen(), slot: $("#f-slot").value, name, g: v("#f-g"), kcal: Math.round(kcal), p: v("#f-p"), c: v("#f-c"), f: v("#f-f"), az: v("#f-az"), fi: v("#f-fi"), ia: aiMeal };
-  const ix = editMeal ? d.meals.findIndex(m => m.id === editMeal) : -1;
-  if (ix >= 0) d.meals[ix] = rec; else d.meals.push(rec);
+  let edited = false;
+  if (mealMode === "plan") {
+    const dp = clone(diet() || { by: "", slots: {} }); dp.slots = dp.slots || {};
+    (dp.slots[rec.slot] = dp.slots[rec.slot] || []).push({ id: rec.id, name: rec.name, g: rec.g, kcal: rec.kcal, p: rec.p, c: rec.c, f: rec.f });
+    saveDiet(dp);
+  } else {
+    const d = getDay(S.date), ix = editMeal ? d.meals.findIndex(m => m.id === editMeal) : -1; edited = ix >= 0;
+    if (edited) d.meals[ix] = rec; else d.meals.push(rec);
+    openSlots.add(rec.slot); saveDay(d);
+  }
   ["#f-name", "#f-g", "#f-kcal", "#f-p", "#f-c", "#f-f", "#f-az", "#f-fi"].forEach(i => { $(i).value = ""; });
-  aiMeal = false; msg.textContent = ""; msg.className = "msg"; openSlots.add(rec.slot); editMeal = null;
-  saveDay(d); closeSheets(); toast(ix >= 0 ? "Comida actualizada." : "Comida añadida.");
+  aiMeal = false; editMeal = null; mealAdded++;
+  if (stay) { msg.textContent = "Añadido: " + rec.name + ". Sigue con el siguiente."; msg.className = "msg"; mealList(); $("#f-name").focus(); return; }
+  msg.textContent = ""; msg.className = "msg";
+  const plan = mealMode === "plan"; closeSheets(); if (!plan) toast(edited ? "Comida actualizada." : mealAdded > 1 ? "Comidas añadidas." : "Comida añadida.");
+}
+$("#f-form").addEventListener("submit", e => { e.preventDefault(); addMeal(false); });
+$("#f-more").addEventListener("click", () => addMeal(true));
+
+/* ---------- Plan de nutrición pautado ---------- */
+const diet = () => (S.profile && S.profile.diet) || null;
+/* Totales del plan: la suma de lo apuntado por comidas o, si no hay detalle, los totales puestos a mano */
+function dietTotals() {
+  const d = diet(); if (!d) return null;
+  const items = SLOTS.flatMap(([k]) => (d.slots && d.slots[k]) || []);
+  if (items.length) return items.reduce((t, x) => ({ kcal: t.kcal + (x.kcal || 0), p: t.p + (x.p || 0), c: t.c + (x.c || 0), f: t.f + (x.f || 0), macros: true, n: t.n + 1 }), { kcal: 0, p: 0, c: 0, f: 0, macros: true, n: 0 });
+  const m = d.tot; if (!m || !(m.kcal > 0)) return null;
+  return { kcal: m.kcal, p: m.p || 0, c: m.c || 0, f: m.f || 0, macros: (m.p || 0) + (m.c || 0) + (m.f || 0) > 0, n: 0 };
+}
+function saveDiet(d) { const p = clone(S.profile); if (d) p.diet = d; else delete p.diet; saveProfile(p); }
+function rDietCard() {
+  const box = $("#diet-box"); if (!box) return; const t = S.profile ? dietTotals() : null, d = diet();
+  box.innerHTML = t ? `<p><b>${nf(t.kcal)} kcal</b>${t.macros ? ` · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g` : ""}${d.by ? ` <span class="sub">· pautado por ${esc(d.by)}</span>` : ""}</p><p class="sub">En Hoy ves cada día si este plan encaja, se queda corto o te sobra según lo que entrenes.</p><div class="row"><button class="btn ghost" type="button" data-sheet="diet">Ver o cambiar el plan</button></div>`
+    : `<p class="sub">¿Tienes un plan de comidas pautado por tu nutricionista o dietista? Apúntalo aquí y, con lo que entrenes cada día, te digo si ese plan encaja, se queda corto o te sobra. También podrás apuntar lo pautado con un toque.</p><div class="row"><button class="btn" type="button" data-sheet="diet">Añadir mi plan</button></div>`;
+}
+function dietSheet() {
+  const d = diet() || { by: "", slots: {} }, tot = dietTotals(), mt = d.tot || {}, sv = v => v > 0 ? String(v).replace(".", ",") : "";
+  $("#diet-body").innerHTML = `<p class="sub">Apunta lo que te han pautado, comida por comida. Con eso y con lo que entrenes, cada día te digo si el plan encaja, se queda corto o te sobra.</p>` +
+    SLOTS.map(([k, n]) => {
+      const it = (d.slots && d.slots[k]) || [], kc = it.reduce((a, x) => a + (x.kcal || 0), 0);
+      return `<div class="dslot"><div class="dslot-h"><b>${n}</b><span class="num sub">${it.length ? nf(kc) + " kcal" : ""}</span><button class="btn ghost sm" type="button" data-add-slot="${k}" data-mode="plan">+ Añadir</button></div>${it.length ? `<ul class="meals">${it.map(m => `<li><span>${esc(m.name)}${m.g ? ` <span class="num" style="color:var(--muted)">${nf(m.g)} g</span>` : ""}</span><span class="kc num">${nf(m.kcal)}</span><span></span><button class="icon-btn" type="button" data-del-diet="${esc(m.id)}" aria-label="Quitar ${esc(m.name)}">×</button><small class="num">P ${nf(m.p)} · H ${nf(m.c)} · G ${nf(m.f)} g</small></li>`).join("")}</ul>` : ""}</div>`;
+    }).join("") +
+    (tot && tot.n ? `<p class="dtot num">Total del plan: <b>${nf(tot.kcal)} kcal</b> · P ${nf(tot.p)} · H ${nf(tot.c)} · G ${nf(tot.f)} g</p>`
+      : `<details class="how" ${mt.kcal > 0 ? "open" : ""}><summary>No tengo el detalle: poner solo los totales del día</summary><div class="four" style="padding-top:10px"><label class="fld">Kcal<input id="dt-kcal" type="text" inputmode="decimal" value="${sv(mt.kcal)}"></label><label class="fld">Proteína (g)<input id="dt-p" type="text" inputmode="decimal" value="${sv(mt.p)}"></label><label class="fld">Hidratos (g)<input id="dt-c" type="text" inputmode="decimal" value="${sv(mt.c)}"></label><label class="fld">Grasa (g)<input id="dt-f" type="text" inputmode="decimal" value="${sv(mt.f)}"></label></div><div class="row actions" style="padding-top:10px"><button class="btn ghost sm" type="button" id="dt-save">Guardar totales</button></div></details>`) +
+    `<label class="fld">Quién te lo ha pautado (opcional)<input id="dt-by" type="text" maxlength="60" value="${esc(d.by || "")}" placeholder="Mi nutricionista"></label>
+    <p id="dt-msg" class="msg" aria-live="polite"></p>
+    <div class="row actions"><button class="btn" type="button" data-close>Listo</button>${diet() ? `<button class="btn ghost sm" type="button" id="dt-clear">Quitar el plan</button>` : ""}</div>`;
+}
+document.addEventListener("change", e => { if (e.target.id !== "dt-by" || !S.profile) return; const d = clone(diet() || { by: "", slots: {} }); d.by = e.target.value.trim().slice(0, 60); saveDiet(d); });
+document.addEventListener("click", e => {
+  const t = e.target.closest("#dt-save,#dt-clear"); if (!t || !S.profile) return;
+  if (t.id === "dt-clear") { saveDiet(null); closeSheets(); return toast("Plan quitado."); }
+  const n = id => { const x = num($(id).value); return x > 0 ? Math.round(x) : 0; }, kcal = n("#dt-kcal");
+  if (!(kcal >= 500 && kcal <= 8000)) { $("#dt-msg").textContent = "Pon las calorías del día, por ejemplo 2100."; $("#dt-msg").className = "msg err"; return; }
+  const d = clone(diet() || { by: "", slots: {} }); d.by = ($("#dt-by").value || "").trim().slice(0, 60); d.tot = { kcal, p: n("#dt-p"), c: n("#dt-c"), f: n("#dt-f") };
+  saveDiet(d); dietSheet(); toast("Plan guardado.");
 });
 
+/* ---------- Recordatorios: se guardan aquí y se llevan al calendario del usuario ---------- */
+const REMK = { comida: ["Comida", "Comida"], agua: ["Hidratación", "Beber agua"], med: ["Medicación", "Medicación"], otro: ["Otro", ""] };
+/* Los de medicación van aparte (`medrem`): son dato de salud y no se suben a la nube */
+const rems = () => { const p = S.profile || {}; return (p.rem || []).concat((p.medrem || []).map(r => Object.assign({}, r, { kind: "med" }))).sort((a, b) => a.time < b.time ? -1 : a.time > b.time ? 1 : 0); };
+function saveRems(list) {
+  const p = clone(S.profile); p.rem = list.filter(r => r.kind !== "med"); p.medrem = list.filter(r => r.kind === "med").map(r => ({ id: r.id, title: r.title, time: r.time, days: r.days }));
+  if (!p.rem.length) delete p.rem; if (!p.medrem.length) delete p.medrem; saveProfile(p);
+}
+/* Enlace que abre Google Calendar con el evento ya relleno y repitiéndose; el usuario solo pulsa Guardar */
+function gcalUrl(r) {
+  const [h, m] = r.time.split(":").map(Number), st = new Date(); st.setHours(h, m, 0, 0);
+  if (r.days === "lv") while (st.getDay() === 0 || st.getDay() === 6) st.setDate(st.getDate() + 1);
+  const en = new Date(st.getTime() + 10 * 60000), f = d => d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "T" + pad(d.getHours()) + pad(d.getMinutes()) + "00";
+  const q = new URLSearchParams({ action: "TEMPLATE", text: r.title, details: "Recordatorio de Elitepro", dates: f(st) + "/" + f(en), recur: "RRULE:FREQ=" + (r.days === "lv" ? "WEEKLY;BYDAY=MO,TU,WE,TH,FR" : "DAILY") });
+  try { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone; if (tz) q.set("ctz", tz); } catch (e) { /* sin zona: usa la del calendario */ }
+  return "https://calendar.google.com/calendar/render?" + q.toString();
+}
+function rRem() {
+  const box = $("#rem-box"); if (!box) return; const list = S.profile ? rems() : [];
+  box.innerHTML = (list.length ? `<ul class="rems">${list.map(r => `<li><span><b class="num">${esc(r.time)}</b> · ${esc(r.title)} <span class="sub">· ${REMK[r.kind] && REMK[r.kind][0] !== r.title ? REMK[r.kind][0] + " · " : ""}${r.days === "lv" ? "de lunes a viernes" : "todos los días"}</span></span><a class="btn ghost sm" href="${esc(gcalUrl(r))}" target="_blank" rel="noopener">Añadir a Google Calendar</a><button class="icon-btn" type="button" data-del-rem="${esc(r.id)}" aria-label="Quitar ${esc(r.title)}">×</button></li>`).join("")}</ul>
+      <p class="sub">Cada botón abre Google Calendar con el aviso ya relleno y repitiéndose: solo tienes que pulsar Guardar. Google te avisa con la antelación que tengas puesta en tu calendario.</p>`
+      : `<p class="sub">Ponte avisos de comidas, de beber agua o de tu medicación y llévalos a tu Google Calendar con un toque.</p>`) +
+    `<div class="row"><button class="btn${list.length ? " ghost" : ""}" type="button" data-sheet="rem">Añadir recordatorio</button>${list.length ? "" : `<button class="btn ghost" type="button" data-rem-defaults="1">Proponer los habituales</button>`}</div>` +
+    (list.some(r => r.kind === "med") ? `<p class="sub">Los recordatorios de medicación se quedan en este dispositivo. Elitepro no pauta ni cambia tu medicación: pon lo que te haya indicado tu médico.</p>` : "");
+}
+function remNote() { const k = $("#r-kind").value; $("#r-note").textContent = k === "med" ? "Pon solo lo que te haya indicado tu médico. Este aviso no se sube a la nube." : ""; }
+$("#r-kind").addEventListener("change", () => { const k = $("#r-kind").value, t = $("#r-title"); if (!t.value.trim() || Object.values(REMK).some(x => x[1] === t.value.trim())) t.value = REMK[k][1]; remNote(); });
+$("#rem-form").addEventListener("submit", e => {
+  e.preventDefault(); const k = $("#r-kind").value, title = $("#r-title").value.trim().slice(0, 60) || REMK[k][1] || "Recordatorio", time = $("#r-time").value, msg = $("#r-msg");
+  if (!/^\d{2}:\d{2}$/.test(time)) { msg.textContent = "Pon la hora del aviso."; msg.className = "msg err"; return; }
+  saveRems(rems().concat([{ id: uidGen(), kind: k, title, time, days: $("#r-days").value === "lv" ? "lv" : "all" }]));
+  msg.textContent = ""; closeSheets(); toast("Recordatorio guardado. Añádelo a tu calendario desde Perfil.");
+});
 /* ---------- IA: comida por texto o foto, captura de Strava, ideas ---------- */
 const AIERR = { rate_limited: "Demasiadas peticiones seguidas. Prueba dentro de un rato.", session_expired: "Tu sesión ha caducado. Vuelve a entrar y repite.", image_rejected: "No puedo usar esa imagen. Prueba con otra en JPG o PNG.", refused: "Eso no se ha podido analizar.", invalid_json: "No he entendido la respuesta. Inténtalo otra vez.", empty_completion: "No ha salido respuesta. Describe la comida con más detalle.", images_unavailable: "Aquí no se pueden enviar fotos." };
 const AIOFF = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"];
@@ -1847,11 +2019,13 @@ const canon = o => o === null || typeof o !== "object" ? String(JSON.stringify(o
 const h53 = str => { let a = 0xdeadbeef, b = 0x41c6ce57; for (let i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); a = Math.imul(a ^ ch, 2654435761); b = Math.imul(b ^ ch, 1597334677); } a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909); b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909); return (4294967296 * (2097151 & b) + (a >>> 0)).toString(36); };
 /* Cada dato tiene dos partes: la de entreno y nutrición, y la de salud (condición, límites del médico, lesiones, glucosa).
    La de salud solo sale del dispositivo con consentimiento expreso. */
-const cCore = (kind, o) => { if (!o) return null; const c = Object.assign({}, o); if (kind === "p") { delete c.health; delete c.injuries; } else delete c.glu; return c; };
+const cCore = (kind, o) => { if (!o) return null; const c = Object.assign({}, o); if (kind === "p") { delete c.health; delete c.injuries; delete c.medrem; } else delete c.glu; return c; };
+/* Los recordatorios de medicación (`medrem`) no se suben nunca, ni siquiera con el consentimiento de salud */
+const cLocal = (kind, o) => { if (kind !== "p" || !o || o.medrem === undefined) return o; const c = Object.assign({}, o); delete c.medrem; return c; };
 const cHealth = (kind, o) => { if (!o) return null; if (kind === "p") return (o.health && o.health.cond) || (o.injuries || []).length ? { health: o.health, injuries: o.injuries } : null; return (o.glu || []).length ? { glu: o.glu } : null; };
 const hC = (kind, o) => o ? h53(canon(cCore(kind, o))) : "";
 const hH = (kind, o) => { const x = cHealth(kind, o); return x ? h53(canon(x)) : ""; };
-const cOut = (me, kind, o) => (!o || me.health ? o : cCore(kind, o));
+const cOut = (me, kind, o) => (!o ? o : me.health ? cLocal(kind, o) : cCore(kind, o));
 function cSnap(me) { const days = {}; Object.keys(S.days).forEach(k => { days[k] = cOut(me, "d", S.days[k]); }); return { profile: cOut(me, "p", S.profile), days }; }
 const cEmpty = () => ({ c: { p: "", d: {} }, h: { p: "", d: {} } });
 function cHashes(me, data) { const b = cEmpty(); b.c.p = hC("p", data.profile); if (me.health) b.h.p = hH("p", data.profile); Object.keys(data.days || {}).forEach(k => { b.c.d[k] = hC("d", data.days[k]); const x = me.health ? hH("d", data.days[k]) : ""; if (x) b.h.d[k] = x; }); return b; }
@@ -1873,7 +2047,7 @@ function cMerge(me, R, adopt, fresh) {
     else if (adopt || fresh) { hp = rh || lh; if (rh && hH(kind, rem) !== hH(kind, loc)) changed = true; }
     else if (hH(kind, loc) !== bh) hp = lh;
     else { hp = rh; if (hH(kind, rem) !== bh) changed = true; }
-    return Object.assign({}, core, hp || {});
+    return Object.assign({}, core, hp || {}, kind === "p" && loc && loc.medrem !== undefined ? { medrem: loc.medrem } : {});
   };
   out.profile = keep("p", S.profile, R.profile, B.c.p, B.h.p);
   new Set(Object.keys(S.days).concat(Object.keys(rd))).forEach(k => { const v = keep("d", S.days[k], rd[k], B.c.d[k] || "", B.h.d[k] || ""); if (v) out.days[k] = v; });
@@ -2032,6 +2206,18 @@ const cGo = goLocal; goLocal = function (note) { cGo(note); cLoad(); cSet(cState
 const cRender = render; render = function () { cRender(); cCta(); if (csFor !== null && csFor !== users.current) { cLoad(); cSet(cState); cNote(); if (cs && cs.token) cSync(true); } };
 document.addEventListener("visibilitychange", () => { if (!document.hidden && cs && cs.token && Date.now() - (cs.at || 0) > 60000) cSync(true); });
 window.addEventListener("online", () => { if (cs && cs.token) cSync(true); });
+/* ---------- Recordatorios: archivo .ics para calendarios que no son de Google (solo versión web) ---------- */
+$("#rem-extra").innerHTML = `<div class="row" id="rem-ics-row" hidden><button class="btn ghost sm" type="button" id="rem-ics">Descargar todos para otro calendario (.ics)</button></div>`;
+const remIcs = render; render = function () { remIcs(); const r = $("#rem-ics-row"); if (r) r.hidden = !(S.profile && rems().length); };
+$("#rem-ics").addEventListener("click", () => {
+  const z = s => String(s).replace(/\\/g, "\\\\").replace(/([,;])/g, "\\$1").replace(/\r?\n/g, " "), now = new Date();
+  const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, ""), day = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate());
+  const ev = rems().map(r => ["BEGIN:VEVENT", "UID:" + r.id + "@elitepro", "DTSTAMP:" + stamp, "DTSTART:" + day + "T" + r.time.replace(":", "") + "00", "DURATION:PT10M",
+    "RRULE:FREQ=" + (r.days === "lv" ? "WEEKLY;BYDAY=MO,TU,WE,TH,FR" : "DAILY"), "SUMMARY:" + z(r.title), "DESCRIPTION:Recordatorio de Elitepro",
+    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + z(r.title), "TRIGGER:PT0M", "END:VALARM", "END:VEVENT"].join("\r\n"));
+  const blob = new Blob([["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Elitepro//Recordatorios//ES", "CALSCALE:GREGORIAN"].concat(ev, ["END:VCALENDAR"]).join("\r\n") + "\r\n"], { type: "text/calendar" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "elitepro-recordatorios.ics"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
 /* ---------- App instalable: icono en la pantalla de inicio, pantalla completa y uso sin conexión ---------- */
 let pwaEvt = null;
 const pwaIn = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
@@ -2049,7 +2235,7 @@ document.addEventListener("click", async e => { if (!e.target.closest("#pwa-go")
 pwaPaint();
 if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) navigator.serviceWorker.register("sw.js").catch(() => { /* sin soporte: la app sigue funcionando con conexión */ });
 /* ---------- Versión: cuando hay una publicación nueva, la app se actualiza sola (o avisa si estás a medias de algo) ---------- */
-const BUILD = "46f17ecdbc7f";
+const BUILD = "b338068bbd45";
 async function upGo(v) {
   try { sessionStorage.setItem("elitepro:upd", v); } catch (e) { /* sin almacenamiento */ }
   try { await fetch(location.pathname, { cache: "reload" }); } catch (e) { /* sin conexión */ } // renueva la copia guardada por el navegador
@@ -2107,7 +2293,7 @@ function planSheet(date) {
   $("#sh-plan-body").innerHTML = `<div class="row"><label class="fld wide">Tipo de entreno<select data-sess-type="${date}">${typeOpts(s.type, s.unset)}</select></label><label class="fld">Minutos<input type="text" inputmode="numeric" data-sess-min="${date}" value="${s.min || ""}"></label></div><p class="sub">Se guarda al cambiarlo y solo afecta a este día.</p>`;
 }
 $("#f-manual").addEventListener("click", () => { mealFields(true); $("#f-name").focus(); });
-$("#sh-meal").addEventListener("close", () => { editMeal = null; });
+$("#sh-meal").addEventListener("close", () => { editMeal = null; if (mealMode === "plan") { mealMode = "day"; dietSheet(); openSheet("diet"); } }); // al terminar de añadir al plan se vuelve a él
 document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.slot; if (!k) return; if (e.target.open) openSlots.add(k); else openSlots.delete(k); }, true);
 
 /* ---------- Eventos delegados ---------- */
@@ -2118,6 +2304,19 @@ function setSession(date, patch) {
 }
 document.addEventListener("click", e => {
   if (e.target.matches && e.target.matches("dialog.sheet")) { e.target.close(); return; }
+  const x = e.target.closest("[data-add-slot],[data-log-plan],[data-del-diet],[data-del-rem],[data-rem-defaults]");
+  if (x && S.profile) {
+    e.preventDefault(); // el «+» va dentro de un desplegable: que no lo abra ni lo cierre
+    if (x.dataset.addSlot) return openMeal(null, x.dataset.addSlot, x.dataset.mode);
+    if (x.dataset.logPlan) {
+      const k = x.dataset.logPlan, items = ((diet() || {}).slots || {})[k] || [], d = getDay(S.date);
+      items.forEach(m => d.meals.push({ id: uidGen(), slot: k, name: m.name, g: m.g || 0, kcal: m.kcal || 0, p: m.p || 0, c: m.c || 0, f: m.f || 0, az: 0, fi: 0, ia: false }));
+      openSlots.add(k); saveDay(d); return toast("Apuntado lo pautado.");
+    }
+    if (x.dataset.delDiet) { const dp = clone(diet() || { slots: {} }); Object.keys(dp.slots || {}).forEach(k => { dp.slots[k] = dp.slots[k].filter(m => m.id !== x.dataset.delDiet); if (!dp.slots[k].length) delete dp.slots[k]; }); saveDiet(dp); return dietSheet(); }
+    if (x.dataset.delRem) return saveRems(rems().filter(r => r.id !== x.dataset.delRem));
+    if (x.dataset.remDefaults) { saveRems([["comida", "Desayuno", "08:00"], ["agua", "Beber agua", "11:00"], ["comida", "Comida", "14:00"], ["agua", "Beber agua", "16:30"], ["comida", "Merienda", "17:30"], ["agua", "Beber agua", "19:00"], ["comida", "Cena", "21:00"]].map(([kind, title, time]) => ({ id: uidGen(), kind, title, time, days: "all" }))); return toast("Recordatorios propuestos. Cambia o quita los que no te valgan."); }
+  }
   if (e.target.closest("[data-close-note]")) { const nb = $("#banner"); try { localStorage.setItem("elitepro:note", nb.dataset.t || ""); } catch (x) { /* sin almacenamiento */ } nb.hidden = true; return; }
   const t = e.target.closest("[data-go],[data-wk],[data-open],[data-del-meal],[data-del-act],[data-del-ev],[data-del-glu],[data-del-inj],[data-use-food],[data-target-ev],[data-copy-week],[data-sheet],[data-close],[data-quick],[data-edit-meal],[data-gpx],#idea-btn,.tabs a"); if (!t) return;
   if (t.matches(".tabs a")) return;
@@ -2127,6 +2326,8 @@ document.addEventListener("click", e => {
     const n = t.dataset.sheet || t.dataset.quick || (t.dataset.editMeal ? "meal" : "act");
     if (t.dataset.quick && n !== "ev" && S.tab !== "hoy") { S.date = today(); location.hash = "#hoy"; render(); }
     if (n === "meal") return openMeal(t.dataset.editMeal || null);
+    if (n === "diet") dietSheet();
+    if (n === "rem") { $("#rem-form").reset(); $("#r-title").value = REMK.comida[1]; $("#r-msg").textContent = ""; remNote(); }
     if (n === "plan") planSheet(t.dataset.date || S.date);
     if (n === "act") { $("#a-msg").textContent = ""; $("#a-msg").className = "msg"; if (!["#a-min", "#a-km", "#a-kcal", "#a-hr"].some(i => $(i).value)) $("#a-type").value = plannedOr($("#a-type").value); actFields(true); }
     openSheet(n);
@@ -2150,7 +2351,7 @@ document.addEventListener("click", e => {
   }
   if (t.dataset.delEv) { const p = clone(S.profile); p.events = events().filter(x => x.id !== t.dataset.delEv); if (p.target === t.dataset.delEv) p.target = ""; profFilled = false; return saveProfile(p); }
   if (t.dataset.targetEv) { const p = clone(S.profile); p.target = t.dataset.targetEv; return saveProfile(p); }
-  if (t.dataset.useFood) { const fd = t.dataset.useFood, gr = String(num($("#c-g").value) > 0 ? num($("#c-g").value) : 100).replace(".", ","); openMeal(null); $("#f-name").value = fd; $("#f-g").value = gr; fromTable(false); mealFields(true); return; }
+  if (t.dataset.useFood) { const fd = t.dataset.useFood, gr = String(num($("#c-g").value) > 0 ? num($("#c-g").value) : 100).replace(".", ","); openMeal(null); $("#f-name").value = fd; $("#f-g").value = gr; fromTable(false); mealFields(true); mealList(); return; }
   if (t.dataset.delInj) { const p = clone(S.profile); p.injuries = injuries().filter(i => i.id !== t.dataset.delInj); return saveProfile(p); }
   if (t.dataset.delGlu) { const d = getDay(S.date); d.glu = (d.glu || []).filter(g => g.id !== t.dataset.delGlu); return saveDay(d); }
   if (t.dataset.delMeal) { const d = getDay(S.date); d.meals = d.meals.filter(m => m.id !== t.dataset.delMeal); return saveDay(d); }
