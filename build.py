@@ -15,6 +15,7 @@ fav = (snip / 'snip_favicon.html').read_text(encoding='utf8')
 # Cuenta en la nube: solo se incluye si src/nube.json tiene la dirección del servidor (o se pasa por ELITEPRO_NUBE_URL)
 cfg = json.loads((snip / 'nube.json').read_text(encoding='utf8')) if (snip / 'nube.json').exists() else {}
 cfg['url'] = os.environ.get('ELITEPRO_NUBE_URL', cfg.get('url', ''))
+if 'ELITEPRO_NUBE_URL' in os.environ: cfg['kid'] = os.environ.get('ELITEPRO_NUBE_KID', '')  # en pruebas, la llave fijada no es la real
 core = (snip / 'snip_cloud_core.js').read_text(encoding='utf8') if cfg['url'] else ''
 if 'ELITEPRO_NUBE_URL' not in os.environ and cfg['url'] and not (cfg.get('responsable') and cfg.get('contacto')):
     sys.exit('Falta "responsable" o "contacto" en src/nube.json: sin ellos la política de privacidad no vale.')
