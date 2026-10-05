@@ -243,8 +243,8 @@ AIMSG.photo = AIMSG.calc = "Para usar la IA entra en tu cuenta: Perfil → Cuent
 document.querySelectorAll("#sh-meal .only").forEach(el => { el.textContent = "Con tu cuenta en la nube"; });
 document.body.insertAdjacentHTML("beforeend", `<dialog id="ai-ok" class="sheet" aria-labelledby="ai-ok-t" style="z-index:50"><div class="sheet-in">
   <div class="sheet-head"><h2 id="ai-ok-t">Antes de usar la IA</h2></div>
-  <p class="sub">La inteligencia artificial la da Anthropic (Claude). Para contestarte, lo que escribas, las fotos que mandes, tus datos básicos (edad, peso, altura y objetivo) y un resumen de tus comidas y entrenos de la semana se envían a su servicio, que puede estar fuera de la Unión Europea. Elitepro no guarda esas conversaciones.</p>
-  <p class="sub"><b>No se envían</b> tu nombre, tu correo ni tus datos de salud (condición, glucosa, lesiones, medicación). No escribas ni fotografíes datos de salud u otras cosas que no quieras compartir. Lo que calcula son estimaciones, no consejo médico. Más en la <a href="privacidad.html" target="_blank" rel="noopener" style="color:var(--ink)">política de privacidad</a>.</p>
+  <p class="sub">La inteligencia artificial la da Anthropic (Claude). Para contestarte, lo que escribas, las fotos y documentos que mandes (por ejemplo, tu plan), tus datos básicos (edad, peso, altura y objetivo) y un resumen de tus comidas y entrenos de la semana se envían a su servicio, que puede estar fuera de la Unión Europea. Elitepro no guarda esas conversaciones.</p>
+  <p class="sub"><b>No se envían</b> tu nombre, tu correo ni tus datos de salud (condición, glucosa, lesiones, medicación). Si un documento tuyo los trae, recórtalos antes de mandarlo: no escribas ni envíes nada que no quieras compartir. Lo que calcula son estimaciones, no consejo médico. Más en la <a href="privacidad.html" target="_blank" rel="noopener" style="color:var(--ink)">política de privacidad</a>.</p>
   <div class="row actions"><button class="btn" type="button" id="ai-ok-yes">Entendido, usar la IA</button><button class="btn ghost" type="button" id="ai-ok-no">Ahora no</button></div>
 </div></dialog>`);
 function aiAsk() {
@@ -266,14 +266,19 @@ async function aiShrink(file) {
 async function aiCall(prompt, o) {
   const me = cs; if (!me || !me.token) throw aiErr("session_expired");
   if (!me.aiok) { if (!(await aiAsk())) throw aiErr("need_ok"); me.aiok = true; if (cs === me) cStore(me); }
-  const content = []; for (const f of [].concat((o && o.images) || [])) content.push(await aiShrink(f));
+  const content = []; for (const f of Array.from((o && o.images && (o.images instanceof Blob ? [o.images] : o.images)) || [])) content.push(await aiShrink(f));
+  for (const f of (o && o.docs) || []) { // los PDF van tal cual: los lee el modelo, sin pasar por ningún OCR
+    if (f.size > 4 * 1024 * 1024) throw aiErr("too_big");
+    const u8 = new Uint8Array(await f.arrayBuffer()); let bin = ""; for (let i = 0; i < u8.length; i += 32768) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
+    content.push({ type: "document", media_type: "application/pdf", data: btoa(bin) });
+  }
   content.push({ type: "text", text: String(prompt).slice(0, 19000) });
-  try { return (await EPC.api(CLOUD_URL, { op: "ai", token: me.token, messages: [{ role: "user", content }], max: 1100 }, 90000)).text; }
+  try { return (await EPC.api(CLOUD_URL, { op: "ai", token: me.token, messages: [{ role: "user", content }], max: Math.min((o && o.max) || 1100, 4000) }, 120000)).text; }
   catch (e) {
     const c = e && e.code;
     if (c === "sesion") { me.token = ""; if (cs === me) { cStore(me); cSet("login"); cNote(); } throw aiErr("session_expired"); }
     if (c === "sin_ia") { me.ai = false; if (cs === me) cStore(me); throw aiErr("capability_disabled"); }
-    throw aiErr(c === "limite_ia" ? "rate_limited" : c === "ia_ocupada" ? "busy" : c === "datos" && content.length > 1 ? "image_rejected" : "red");
+    throw aiErr(c === "limite_ia" ? "rate_limited" : c === "ia_ocupada" ? "busy" : c === "datos" && content.length > 1 ? (o && o.docs ? "too_big" : "image_rejected") : "red");
   }
 }
 const webSample = Object.assign(async (prompt, o) => { const text = await aiCall(prompt, o); if (o && o.onText) o.onText({ text }); return { text }; }, {

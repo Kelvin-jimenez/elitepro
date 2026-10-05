@@ -192,24 +192,26 @@ var OPS = {
     return {};
   },
 
-  /* IA para quien tiene la sesión abierta: reenvía la petición (texto y, si acaso, fotos) a la API de Anthropic y devuelve el texto.
+  /* IA para quien tiene la sesión abierta: reenvía la petición (texto y, si acaso, fotos o un PDF) a la API de Anthropic y devuelve el texto.
      No guarda nada de lo que se pregunta ni de lo que se contesta. */
   ai: function (b) {
     var x = user_(b.token, false), p = props_(), key = p.getProperty("ai_key"); if (!key) fail_("sin_ia");
     if (!Array.isArray(b.messages) || !b.messages.length || b.messages.length > 12) fail_("datos");
-    var chars = 0, imgs = 0, msgs = b.messages.map(function (m) {
+    var chars = 0, imgs = 0, docs = 0, msgs = b.messages.map(function (m) {
       if (!m || (m.role !== "user" && m.role !== "assistant") || !Array.isArray(m.content) || !m.content.length) fail_("datos");
       return { role: m.role, content: m.content.map(function (c) {
         if (c && c.type === "text") { var t = str_(c.text, 20000); chars += t.length; return { type: "text", text: t }; }
+        if (c && c.type === "document" && m.role === "user") { docs++; return { type: "document", source: { type: "base64", media_type: str_(c.media_type, 20, /^application\/pdf$/), data: str_(c.data, 6000000, /^[A-Za-z0-9+\/=]+$/) } }; }
         if (c && c.type === "image" && m.role === "user") { imgs++; return { type: "image", source: { type: "base64", media_type: str_(c.media_type, 20, /^image\/(jpeg|png|webp)$/), data: str_(c.data, 2000000, /^[A-Za-z0-9+\/=]+$/) } }; }
         fail_("datos");
       }) };
     });
-    if (chars > 30000 || imgs > 3 || msgs[0].role !== "user") fail_("datos");
+    if (chars > 30000 || imgs > 4 || docs > 2 || msgs[0].role !== "user") fail_("datos");
     aiCount_("ai_n:" + x.u.id, Number(p.getProperty("ai_max_user")) || AI_PER_USER); aiCount_("ai_day", Number(p.getProperty("ai_max_day")) || AI_PER_DAY);
-    var body = { model: p.getProperty("ai_model") || AI_MODEL, max_tokens: Math.max(100, Math.min(Number(b.max) || 1000, 1500)), messages: msgs };
+    var body = { model: p.getProperty("ai_model") || AI_MODEL, max_tokens: Math.max(100, Math.min(Number(b.max) || 1000, 4000)), messages: msgs };
     if (typeof b.system === "string" && b.system) body.system = str_(b.system, 8000);
-    var res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", { method: "post", contentType: "application/json", headers: { "x-api-key": key, "anthropic-version": "2023-06-01" }, payload: JSON.stringify(body), muteHttpExceptions: true });
+    var res; try { res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", { method: "post", contentType: "application/json", headers: { "x-api-key": key, "anthropic-version": "2023-06-01" }, payload: JSON.stringify(body), muteHttpExceptions: true }); }
+    catch (err) { console.error("Elitepro · IA sin respuesta: " + err); fail_("ia_ocupada"); }
     var code = res.getResponseCode(), out; try { out = JSON.parse(res.getContentText()); } catch (err) { out = null; }
     if (code !== 200 || !out || !Array.isArray(out.content)) {
       console.error("Elitepro · IA " + code + ": " + String(res.getContentText()).slice(0, 300));
