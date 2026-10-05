@@ -78,7 +78,7 @@ ok('peso: variación semanal −0,5 kg', /−0,5 kg esta semana/.test(await T('#
 // 11. competición
 await p.click('.nav-side a[data-tab="comp"]'); await wait(150); await p.click('#v-comp [data-sheet="ev"]'); await wait(200);
 await p.fill('#ev-name','Strong Race Mallorca'); await p.fill('#ev-date','2026-11-08'); await p.click('#ev-form button[type=submit]'); await wait(300);
-ok('competición añadida y cuenta atrás', /Strong Race Mallorca/.test(await T('#comp-hero')) && /37/.test(await T('#comp-hero')), await T('#comp-hero'));
+ok('competición añadida y cuenta atrás', /Strong Race Mallorca/.test(await T('#comp-hero')) && new RegExp(String(Math.round((new Date(2026, 10, 8) - new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) / 86400000))).test(await T('#comp-hero')), await T('#comp-hero'));
 await p.click('[data-target-ev]'); await wait(200); ok('competición marcada como objetivo', /Tu objetivo/.test(await T('#ev-list')));
 // 12. semana
 await p.click('.nav-side a[data-tab="semana"]'); await wait(200);
