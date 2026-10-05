@@ -64,6 +64,10 @@ try {
   ok('panel: el entrenador ve el plan pautado y ningún recordatorio de medicación', /Plan pautado/.test(await T(C, '#detail')) && /1\.?700 kcal/.test(await T(C, '#detail')) && !/09:30|Medicación/.test(await T(C, '#detail')), (await T(C, '#detail')).slice(0, 300)); await go(A, '#datos'); await A.click('[data-cl="passwd"]'); await A.waitForTimeout(200); await A.fill('#cl-pass', 'clave-de-marco-1'); await A.fill('#cl-new', 'clave-nueva-de-marco'); await A.fill('#cl-pass2', 'clave-nueva-de-marco'); await A.click('#cl-go'); await closed(A);
   await syncNow(A); ok('quien cambia la contraseña sigue conectado', /Conectada/.test(await T(A, '#cl-chip')));
   await go(B, '#datos'); await B.click('[data-cl="sync"]'); await B.waitForTimeout(1500); ok('los demás dispositivos tienen que volver a entrar', /caducada/i.test(await T(B, '#cl-chip')), await T(B, '#cl-chip'));
+  // 6b. servidor ocupado: la app reintenta sola y acaba guardando
+  d = await dump(); const rev0 = Number(d.sheets.usuarios[1][5]);
+  await get('/__busy?on=1'); await weigh(A, '68,5'); setTimeout(() => get('/__busy?on=0'), 4500); await settle(A, 11000); d = await dump();
+  await go(A, '#datos'); ok('con la nube ocupada la app reintenta sola y acaba guardando', Number(d.sheets.usuarios[1][5]) === rev0 + 1 && /Conectada/.test(await T(A, '#cl-chip')), d.sheets.usuarios[1][5] + ' / ' + rev0 + ' ' + await T(A, '#cl-chip'));
   // 7. la app solo cifra para la llave fijada
   if (pinned) {
     await get('/__clearcache'); const E = await mk(); await E.goto(base + '/fijada/index.html'); await E.waitForTimeout(400); await E.click('#v-need a'); await E.waitForTimeout(200); await E.fill('#p-name', 'Eva'); await E.fill('#p-age', '30'); await E.fill('#p-height', '165'); await E.fill('#p-weight', '60'); await E.click('#p-form button[type=submit]'); await E.waitForTimeout(400); await go(E, '#datos');

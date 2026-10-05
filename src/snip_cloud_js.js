@@ -1,7 +1,9 @@
 /* ---------- Cuenta en la nube (solo versión web): copia cifrada en el servidor de Elitepro ---------- */
 const CLOUD_URL = "__CLOUD_URL__", CLOUD_KID = "__CLOUD_KID__";
 const CERR = { credenciales: "Correo o contraseña incorrectos.", invitacion: "Ese código de invitación no vale o ya se ha usado.", existe: "Ya hay una cuenta con ese correo. Usa «Ya tengo cuenta».", espera: "Demasiados intentos. Espera unos minutos y vuelve a probar.", sesion: "La sesión ha caducado. Vuelve a entrar.", sin_configurar: "La nube todavía no está en marcha.", consentimiento: "Hace falta que aceptes la política de privacidad.", datos: "Revisa los datos: hay algo que no vale.", llave: "La llave del responsable no coincide con la de esta versión de la app. No se ha enviado nada: avisa al responsable." };
-const cMsg = e => CERR[e && e.code] || "No hay conexión con la nube. Inténtalo otra vez.";
+Object.assign(CERR, { red: "No hay conexión con la nube. Comprueba tu internet e inténtalo otra vez.", lento: "La nube está tardando demasiado en contestar. Espera un minuto e inténtalo otra vez.", ocupado: "La nube está ocupada ahora mismo. Espera un minuto e inténtalo otra vez.", raro: "La nube ha contestado algo inesperado. Inténtalo otra vez en un minuto." });
+/* Cada fallo dice lo que es: de conexión, del servidor o de este dispositivo */
+const cMsg = e => CERR[e && e.code] || (e && e.code ? "La nube ha dado un error (" + e.code + "). Inténtalo otra vez en un minuto; si sigue, avisa al responsable." : "Ha fallado algo en este dispositivo" + (e && e.message ? ": " + String(e.message).slice(0, 120) : "") + ".");
 const CNOTE = "Lo que apuntes se guarda solo en este navegador. Crea una cuenta en Perfil para tener una copia en la nube.";
 let cs = null, csFor = null, cT = 0, cBusy = false, cAgain = false, cState = "", cMode = "";
 const cOn = () => !!(cs && !cs.out);
@@ -98,7 +100,7 @@ async function cSync(pull, remote) {
     me.at = Date.now(); put(); if (mine()) cSet("ok");
   } catch (e) {
     if (e && e.code === "sesion") { me.token = ""; put(); if (mine()) { cSet("login"); cNote(); } }
-    else if (mine()) cSet(e && e.code === "llave" ? "llave" : "err");
+    else if (mine()) { cSet(e && e.code === "llave" ? "llave" : "err"); if (!(e && e.code === "llave")) { clearTimeout(cT); cT = setTimeout(() => cSync(true), 45000); } } // se reintenta sola al rato
   } finally { cBusy = false; if (cAgain) { cAgain = false; cTouch(); } }
 }
 function cTouch() { clearTimeout(cT); if (cs && cs.token) cT = setTimeout(() => cSync(false), 2500); }
@@ -177,8 +179,10 @@ $("#cl-form").addEventListener("submit", async e => {
       const me = { uid: users.current, email, token: "", dek: EPC.b64(dek), rev: 0, base: cEmpty(), health: $("#cl-hc").checked, kid: pub.kid };
       const snap = cSnap(me);
       const r = await EPC.api(CLOUD_URL, { op: "register", email, auth: k.auth, invite: val("cl-inv").trim(), consent: { adult: true, terms: $("#cl-terms").checked, health: me.health }, wrapUser: EPC.b64(await EPC.enc(k.kek, dek)), wrapCoach: await EPC.wrapFor(pub.pub, dek), kid: pub.kid, blob: await EPC.seal(dek, snap) });
-      me.token = r.token; me.rev = r.rev; me.base = cHashes(me, snap); me.at = Date.now(); cs = me; csFor = me.uid; cStore();
-      closeSheets(); cSet("ok"); cNote(); toast("Cuenta creada. Tus datos ya se guardan en la nube."); cTouch();
+      me.token = r.token; me.at = Date.now();
+      if (r.existing) { me.rev = -1; me.base = cEmpty(); me.fresh = true; } else { me.rev = r.rev; me.base = cHashes(me, snap); } // `existing`: el registro ya había entrado en un intento anterior
+      cs = me; csFor = me.uid; cStore();
+      closeSheets(); cSet("ok"); cNote(); toast("Cuenta creada. Tus datos ya se guardan en la nube."); if (r.existing) cSync(true); else cTouch();
     } else if (cMode === "login") {
       const r = await EPC.api(CLOUD_URL, { op: "login", email, auth: k.auth }), dek = await EPC.dec(k.kek, EPC.unb64(r.wrapUser));
       const old = cs && cs.email === email ? cs : null;

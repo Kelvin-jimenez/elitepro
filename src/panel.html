@@ -91,7 +91,7 @@ dt{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
 const URL_ = "__CLOUD_URL__", $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const nf = (v, d = 0) => Number(v || 0).toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
-const ERR = { credenciales: "Contraseña incorrecta.", codigo: "Ese código no vale. Ejecuta otra vez prepararElitepro en el editor para obtener uno nuevo.", espera: "Demasiados intentos. Espera unos minutos.", sesion: "La sesión ha caducado. Vuelve a entrar." };
+const ERR = { credenciales: "Contraseña incorrecta.", codigo: "Ese código no vale. Ejecuta otra vez prepararElitepro en el editor para obtener uno nuevo.", espera: "Demasiados intentos. Espera unos minutos.", sesion: "La sesión ha caducado. Vuelve a entrar.", ocupado: "El servidor está ocupado. Espera un minuto e inténtalo otra vez.", lento: "El servidor está tardando demasiado. Espera un minuto e inténtalo otra vez." };
 const emsg = e => ERR[e && e.code] || "No hay conexión con el servidor. Inténtalo otra vez.";
 const TYPES = { descanso: "Descanso", fuerza: "Fuerza", carrera: "Carrera suave", series: "Series", hibrido: "Híbrido / Hyrox", crossfit: "Crossfit", funcional: "Funcional", krav: "Krav maga / combate", patines: "Patines", bici: "Bici", natacion: "Natación", movilidad: "Movilidad", competicion: "Competición", otro: "Otro deporte" };
 const GOALS = { def: "Definir", defs: "Definir suave", mant: "Mantener", vol: "Ganar músculo" }, COND = { dm1: "Diabetes tipo 1", dm2: "Diabetes tipo 2", pre: "Prediabetes", otra: "Otra condición" }, SEV = { 1: "Molestia", 2: "Dolor", 3: "Lesión" };

@@ -26,12 +26,12 @@ class Sheet {
     }; return rg;
   }
 }
-const sheets = {}, props = {}, cache = {}, stats = { slept: 0 }, delay = { op: '', ms: 0 };
+const sheets = {}, props = {}, cache = {}, stats = { slept: 0, busy: false }, delay = { op: '', ms: 0 };
 const ctx = {
   SpreadsheetApp: { flush() {}, getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = new Sheet(n)) }), getUi() { throw new Error('sin interfaz'); } },
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; } }) },
   CacheService: { getScriptCache: () => ({ get: k => (cache[k] && cache[k].t > Date.now() ? cache[k].v : null), put: (k, v, s) => { cache[k] = { v, t: Date.now() + s * 1000 }; }, remove: k => { delete cache[k]; } }) },
-  LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+  LockService: { getScriptLock: () => ({ waitLock() {}, tryLock: () => !stats.busy, releaseLock() {} }) },
   Utilities: {
     DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
     computeDigest: (a, s) => signed(crypto.createHash('sha256').update(s, 'utf8').digest()),
@@ -50,6 +50,7 @@ http.createServer((req, res) => {
   if (u.pathname === '/__delay') { delay.op = u.searchParams.get('op') || ''; delay.ms = Number(u.searchParams.get('ms') || 0); res.end('ok'); return; }
   if (u.pathname === '/__setup') { res.end(ctx.prepararElitepro()); return; }
   if (u.pathname === '/__dump') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ sheets: Object.fromEntries(Object.entries(sheets).map(([k, v]) => [k, v.rows])), props, stats })); return; }
+  if (u.pathname === '/__busy') { stats.busy = u.searchParams.get('on') === '1'; res.end('ok'); return; }
   if (u.pathname === '/__clearcache') { Object.keys(cache).forEach(k => delete cache[k]); res.end('ok'); return; }
   const f = path.join(root, u.pathname === '/' ? 'index.html' : decodeURIComponent(u.pathname));
   if (!f.startsWith(root) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end('no'); return; }

@@ -1986,11 +1986,31 @@ const EPC = (() => {
   }
   /* Copia de la llave del usuario que solo el entrenador puede abrir */
   async function wrapFor(pubJwk, dek) { const k = await sub.importKey("jwk", JSON.parse(pubJwk), { name: "RSA-OAEP", hash: "SHA-256" }, false, ["encrypt"]); return b64(new Uint8Array(await sub.encrypt({ name: "RSA-OAEP" }, k, dek))); }
-  async function api(url, body) {
-    let r; try { r = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow" }); } catch (e) { throw Object.assign(new Error("red"), { code: "red" }); }
-    let j; try { j = await r.json(); } catch (e) { throw Object.assign(new Error("red"), { code: "red" }); }
-    if (!j.ok) throw Object.assign(new Error(j.err), { code: j.err });
+  /* Una llamada al servidor, con tope de tiempo. Códigos de fallo propios: red (no se pudo conectar), lento (no contestó a tiempo),
+     raro (contestó algo que no es lo esperado). Los demás códigos son los que devuelve el servidor. */
+  const fail = code => Object.assign(new Error(code), { code });
+  async function once(url, body, ms) {
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), ms); let r, j;
+    try { r = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow", signal: ac.signal }); }
+    catch (e) { clearTimeout(tm); throw fail(e && e.name === "AbortError" ? "lento" : "red"); }
+    try { j = await r.json(); } catch (e) { clearTimeout(tm); throw fail(e && e.name === "AbortError" ? "lento" : "raro"); }
+    clearTimeout(tm);
+    if (!j.ok) throw fail(j.err || "error");
     return j;
+  }
+  /* Reintenta sola lo que se puede repetir sin riesgo: «ocupado» siempre (el servidor no llegó a hacer nada) y, si falla la red
+     o tarda, las operaciones que dan lo mismo hechas una vez que dos. */
+  const SAFE = ["pub", "load", "login", "save", "register", "a_hello", "a_list", "a_get"];
+  async function api(url, body) {
+    const waits = [1500, 4000];
+    for (let i = 0; ; i++) {
+      try { return await once(url, body, 40000); }
+      catch (e) {
+        const again = e.code === "ocupado" || ((e.code === "red" || e.code === "lento") && SAFE.includes(body.op));
+        if (!again || i >= waits.length) throw e;
+        await new Promise(r => setTimeout(r, waits[i]));
+      }
+    }
   }
   async function sha(s) { return hex(new Uint8Array(await sub.digest("SHA-256", te.encode(s)))); }
   return { b64, unb64, hex, rand, derive, enc, dec, seal, open, wrapFor, api, sha, sub };
@@ -1998,7 +2018,9 @@ const EPC = (() => {
 /* ---------- Cuenta en la nube (solo versión web): copia cifrada en el servidor de Elitepro ---------- */
 const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxC7omOAv3DiFLAZlx2U8BEhVq4TsFxbGeEiYlWuO9QPF3_2xl8GehuD6rsTko39nlF/exec", CLOUD_KID = "52c64aae87ac0e86";
 const CERR = { credenciales: "Correo o contraseña incorrectos.", invitacion: "Ese código de invitación no vale o ya se ha usado.", existe: "Ya hay una cuenta con ese correo. Usa «Ya tengo cuenta».", espera: "Demasiados intentos. Espera unos minutos y vuelve a probar.", sesion: "La sesión ha caducado. Vuelve a entrar.", sin_configurar: "La nube todavía no está en marcha.", consentimiento: "Hace falta que aceptes la política de privacidad.", datos: "Revisa los datos: hay algo que no vale.", llave: "La llave del responsable no coincide con la de esta versión de la app. No se ha enviado nada: avisa al responsable." };
-const cMsg = e => CERR[e && e.code] || "No hay conexión con la nube. Inténtalo otra vez.";
+Object.assign(CERR, { red: "No hay conexión con la nube. Comprueba tu internet e inténtalo otra vez.", lento: "La nube está tardando demasiado en contestar. Espera un minuto e inténtalo otra vez.", ocupado: "La nube está ocupada ahora mismo. Espera un minuto e inténtalo otra vez.", raro: "La nube ha contestado algo inesperado. Inténtalo otra vez en un minuto." });
+/* Cada fallo dice lo que es: de conexión, del servidor o de este dispositivo */
+const cMsg = e => CERR[e && e.code] || (e && e.code ? "La nube ha dado un error (" + e.code + "). Inténtalo otra vez en un minuto; si sigue, avisa al responsable." : "Ha fallado algo en este dispositivo" + (e && e.message ? ": " + String(e.message).slice(0, 120) : "") + ".");
 const CNOTE = "Lo que apuntes se guarda solo en este navegador. Crea una cuenta en Perfil para tener una copia en la nube.";
 let cs = null, csFor = null, cT = 0, cBusy = false, cAgain = false, cState = "", cMode = "";
 const cOn = () => !!(cs && !cs.out);
@@ -2095,7 +2117,7 @@ async function cSync(pull, remote) {
     me.at = Date.now(); put(); if (mine()) cSet("ok");
   } catch (e) {
     if (e && e.code === "sesion") { me.token = ""; put(); if (mine()) { cSet("login"); cNote(); } }
-    else if (mine()) cSet(e && e.code === "llave" ? "llave" : "err");
+    else if (mine()) { cSet(e && e.code === "llave" ? "llave" : "err"); if (!(e && e.code === "llave")) { clearTimeout(cT); cT = setTimeout(() => cSync(true), 45000); } } // se reintenta sola al rato
   } finally { cBusy = false; if (cAgain) { cAgain = false; cTouch(); } }
 }
 function cTouch() { clearTimeout(cT); if (cs && cs.token) cT = setTimeout(() => cSync(false), 2500); }
@@ -2174,8 +2196,10 @@ $("#cl-form").addEventListener("submit", async e => {
       const me = { uid: users.current, email, token: "", dek: EPC.b64(dek), rev: 0, base: cEmpty(), health: $("#cl-hc").checked, kid: pub.kid };
       const snap = cSnap(me);
       const r = await EPC.api(CLOUD_URL, { op: "register", email, auth: k.auth, invite: val("cl-inv").trim(), consent: { adult: true, terms: $("#cl-terms").checked, health: me.health }, wrapUser: EPC.b64(await EPC.enc(k.kek, dek)), wrapCoach: await EPC.wrapFor(pub.pub, dek), kid: pub.kid, blob: await EPC.seal(dek, snap) });
-      me.token = r.token; me.rev = r.rev; me.base = cHashes(me, snap); me.at = Date.now(); cs = me; csFor = me.uid; cStore();
-      closeSheets(); cSet("ok"); cNote(); toast("Cuenta creada. Tus datos ya se guardan en la nube."); cTouch();
+      me.token = r.token; me.at = Date.now();
+      if (r.existing) { me.rev = -1; me.base = cEmpty(); me.fresh = true; } else { me.rev = r.rev; me.base = cHashes(me, snap); } // `existing`: el registro ya había entrado en un intento anterior
+      cs = me; csFor = me.uid; cStore();
+      closeSheets(); cSet("ok"); cNote(); toast("Cuenta creada. Tus datos ya se guardan en la nube."); if (r.existing) cSync(true); else cTouch();
     } else if (cMode === "login") {
       const r = await EPC.api(CLOUD_URL, { op: "login", email, auth: k.auth }), dek = await EPC.dec(k.kek, EPC.unb64(r.wrapUser));
       const old = cs && cs.email === email ? cs : null;
@@ -2235,7 +2259,7 @@ document.addEventListener("click", async e => { if (!e.target.closest("#pwa-go")
 pwaPaint();
 if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) navigator.serviceWorker.register("sw.js").catch(() => { /* sin soporte: la app sigue funcionando con conexión */ });
 /* ---------- Versión: cuando hay una publicación nueva, la app se actualiza sola (o avisa si estás a medias de algo) ---------- */
-const BUILD = "b338068bbd45";
+const BUILD = "8890c3e06c98";
 async function upGo(v) {
   try { sessionStorage.setItem("elitepro:upd", v); } catch (e) { /* sin almacenamiento */ }
   try { await fetch(location.pathname, { cache: "reload" }); } catch (e) { /* sin conexión */ } // renueva la copia guardada por el navegador

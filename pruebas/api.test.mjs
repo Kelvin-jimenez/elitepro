@@ -24,7 +24,12 @@ try {
   ok('registro con correo raro', (await api({ ...reg, email: '=1+1@x.com' })).err === 'datos');
   const r1 = await api(reg); ok('registro', r1.ok && r1.rev === 1 && !!r1.token, JSON.stringify(r1));
   ok('la invitación no se puede reutilizar', (await api({ ...reg, email: 'otra@ejemplo.com' })).err === 'invitacion');
-  ok('correo repetido', (await api({ ...reg, invite: inv.codes[1] })).err === 'existe');
+  ok('correo repetido con otra contraseña', (await api({ ...reg, auth: B, invite: inv.codes[1] })).err === 'existe');
+  const again = await api(reg); ok('registro repetido con los mismos datos (respuesta perdida): entra en la cuenta ya creada', again.ok && again.existing === true && again.rev === 1 && !!again.token, JSON.stringify(again));
+  await fetch(base + '/__busy?on=1');
+  ok('con el turno ocupado, escribir contesta «ocupado»', (await api({ op: 'save', token: r1.token, rev: 1, blob: 'x' })).err === 'ocupado');
+  ok('…pero leer y entrar siguen funcionando', (await api({ op: 'load', token: r1.token })).ok && (await api({ op: 'pub' })).ok && (await api({ op: 'login', email: 'ana@ejemplo.com', auth: A })).ok);
+  await fetch(base + '/__busy?on=0');
   ok('entrada con contraseña mala', (await api({ op: 'login', email: 'ana@ejemplo.com', auth: B })).err === 'credenciales');
   ok('entrada con correo que no existe: mismo error', (await api({ op: 'login', email: 'nadie@ejemplo.com', auth: A })).err === 'credenciales');
   const l1 = await api({ op: 'login', email: 'ana@ejemplo.com', auth: A }); ok('entrada', l1.ok && l1.blob === 'BLOB1' && l1.wrapUser === 'WU' && l1.rev === 1 && l1.health === false && l1.ckid === 'k1');

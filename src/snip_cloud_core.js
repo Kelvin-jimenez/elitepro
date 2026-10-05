@@ -29,11 +29,31 @@ const EPC = (() => {
   }
   /* Copia de la llave del usuario que solo el entrenador puede abrir */
   async function wrapFor(pubJwk, dek) { const k = await sub.importKey("jwk", JSON.parse(pubJwk), { name: "RSA-OAEP", hash: "SHA-256" }, false, ["encrypt"]); return b64(new Uint8Array(await sub.encrypt({ name: "RSA-OAEP" }, k, dek))); }
-  async function api(url, body) {
-    let r; try { r = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow" }); } catch (e) { throw Object.assign(new Error("red"), { code: "red" }); }
-    let j; try { j = await r.json(); } catch (e) { throw Object.assign(new Error("red"), { code: "red" }); }
-    if (!j.ok) throw Object.assign(new Error(j.err), { code: j.err });
+  /* Una llamada al servidor, con tope de tiempo. Códigos de fallo propios: red (no se pudo conectar), lento (no contestó a tiempo),
+     raro (contestó algo que no es lo esperado). Los demás códigos son los que devuelve el servidor. */
+  const fail = code => Object.assign(new Error(code), { code });
+  async function once(url, body, ms) {
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), ms); let r, j;
+    try { r = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow", signal: ac.signal }); }
+    catch (e) { clearTimeout(tm); throw fail(e && e.name === "AbortError" ? "lento" : "red"); }
+    try { j = await r.json(); } catch (e) { clearTimeout(tm); throw fail(e && e.name === "AbortError" ? "lento" : "raro"); }
+    clearTimeout(tm);
+    if (!j.ok) throw fail(j.err || "error");
     return j;
+  }
+  /* Reintenta sola lo que se puede repetir sin riesgo: «ocupado» siempre (el servidor no llegó a hacer nada) y, si falla la red
+     o tarda, las operaciones que dan lo mismo hechas una vez que dos. */
+  const SAFE = ["pub", "load", "login", "save", "register", "a_hello", "a_list", "a_get"];
+  async function api(url, body) {
+    const waits = [1500, 4000];
+    for (let i = 0; ; i++) {
+      try { return await once(url, body, 40000); }
+      catch (e) {
+        const again = e.code === "ocupado" || ((e.code === "red" || e.code === "lento") && SAFE.includes(body.op));
+        if (!again || i >= waits.length) throw e;
+        await new Promise(r => setTimeout(r, waits[i]));
+      }
+    }
   }
   async function sha(s) { return hex(new Uint8Array(await sub.digest("SHA-256", te.encode(s)))); }
   return { b64, unb64, hex, rand, derive, enc, dec, seal, open, wrapFor, api, sha, sub };

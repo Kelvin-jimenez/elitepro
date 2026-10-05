@@ -96,9 +96,13 @@ var OPS = {
     if (!/^EP-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(code)) bad_("reg", "invitacion", 20);
     if (!b.consent || b.consent.adult !== true || b.consent.terms !== true) fail_("consentimiento");
     str_(b.wrapUser, 400); str_(b.wrapCoach, 2000); str_(b.kid, 80); if (typeof b.blob !== "string" || b.blob.length > MAX_BLOB) fail_("datos");
-    var s = sheet_(USERS), inv = sheet_(INVITES), irow = find_(inv, 1, code);
+    var s = sheet_(USERS), had = find_(s, 2, email);
+    if (had) { // el correo ya tiene cuenta: si es el mismo registro repetido (se perdió la respuesta), se entra en ella
+      var prev = read_(s, had, false); if (!same_(sha_(prev.sec.salt + auth), prev.sec.hash)) fail_("existe");
+      return { token: session_(prev), rev: prev.rev, existing: true };
+    }
+    var inv = sheet_(INVITES), irow = find_(inv, 1, code);
     if (!irow || String(inv.getRange(irow, 3).getValue())) bad_("reg", "invitacion", 20);
-    if (find_(s, 2, email)) fail_("existe");
     var salt = rand_().slice(0, 32), u = { row: Math.max(s.getLastRow(), 1) + 1, id: rand_().slice(0, 20), email: email, created: now_(), seen: now_(), consent: consent_(b.consent), rev: 1, n: 0,
       sec: { salt: salt, hash: sha_(salt + auth), tv: 0, wrapUser: b.wrapUser, wrapCoach: b.wrapCoach, kid: b.kid, health: !!b.consent.health } };
     write_(s, u, b.blob);
@@ -110,7 +114,6 @@ var OPS = {
     var email = str_(b.email, 120), auth = str_(b.auth, 64, /^[0-9a-f]{64}$/), key = "log:" + sha_(email).slice(0, 24);
     var s = sheet_(USERS), row = find_(s, 2, email); if (!row) bad_(key, "credenciales");
     var u = read_(s, row, true); if (!same_(sha_(u.sec.salt + auth), u.sec.hash)) bad_(key, "credenciales");
-    u.seen = now_(); write_(s, u, null);
     return { token: session_(u), rev: u.rev, blob: u.blob, wrapUser: u.sec.wrapUser, kid: u.sec.kid, ckid: ckid_(), health: !!u.sec.health };
   },
 
@@ -197,19 +200,25 @@ var OPS = {
 };
 
 /* ---------- entrada ---------- */
+/* Solo las operaciones que escriben en la hoja cogen turno, y esperan poco: si otra petición lo tiene, se contesta
+   «ocupado» y la app lo reintenta. Las lecturas no esperan a nadie, así una petición atascada no deja fuera a los demás. */
+var WRITES = { register: 1, save: 1, passwd: 1, remove: 1, a_setup: 1, a_invite: 1, a_delete: 1 };
 function doPost(e) {
-  var out, slow = false, lock = LockService.getScriptLock();
+  var out, slow = false, lock = null, t0 = Date.now(), name = "?";
   try {
-    var b = JSON.parse(e.postData.contents), op = OPS[String(b.op)];
-    if (!op || !Object.prototype.hasOwnProperty.call(OPS, String(b.op))) fail_("op");
-    lock.waitLock(25000);
-    out = op(b) || {}; out.ok = true;
+    var b = JSON.parse(e.postData.contents); name = String(b.op);
+    if (!Object.prototype.hasOwnProperty.call(OPS, name)) fail_("op");
+    if (WRITES[name]) { lock = LockService.getScriptLock(); if (!lock.tryLock(10000)) { lock = null; fail_("ocupado"); } }
+    out = OPS[name](b) || {}; out.ok = true;
+    if (WRITES[name]) SpreadsheetApp.flush(); // lo escrito queda en la hoja antes de soltar el turno
   } catch (err) {
-    out = { ok: false, err: err && err.code ? err.code : "error" }; slow = !!(err && err.slow);
+    var code = err && err.code ? err.code : "error";
+    if (code === "error") console.error("Elitepro · " + name + ": " + (err && err.stack ? err.stack : err)); // se ve en Ejecuciones
+    out = { ok: false, err: code }; slow = !!(err && err.slow);
   } finally {
-    try { SpreadsheetApp.flush(); } catch (x) { /* nada pendiente */ } // lo escrito queda en la hoja antes de soltar el turno
-    try { lock.releaseLock(); } catch (x) { /* no estaba cogido */ }
+    if (lock) { try { lock.releaseLock(); } catch (x) { /* ya suelto */ } }
   }
+  var ms = Date.now() - t0; if (ms > 5000) console.warn("Elitepro · " + name + " tardó " + ms + " ms");
   if (slow) Utilities.sleep(3000);
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
