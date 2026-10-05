@@ -14,6 +14,7 @@ Todo está en un único archivo, `index.html`. Los datos de cada persona se guar
 - `src/elitepro.html`: la fuente (es la versión que se publica dentro de Claude).
 - `build.py`: genera `index.html`, la versión web, a partir de la fuente. Se ejecuta con `python3 build.py`.
 - `index.html`: lo que sirve la web. No se edita a mano.
+- `version.json`: huella de la última publicación. La web la consulta al abrirse y al volver a ella; si es distinta de la suya, se recarga sola (o avisa con un botón si hay un formulario a medias).
 
 - `src/elitepro.fase1.html`: copia de seguridad de la fuente antes del rediseño de panel (fase 2).
 
