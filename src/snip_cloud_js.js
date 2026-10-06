@@ -257,17 +257,17 @@ function aiAsk() {
   });
 }
 const aiErr = code => Object.assign(new Error(code), { code });
-/* Las fotos se reducen antes de enviarlas: 1280 px de lado mayor, en JPEG */
-async function aiShrink(file) {
+/* Las fotos se reducen antes de enviarlas: 1280 px de lado mayor, en JPEG (las páginas de un documento, 1568 px, para que se lean las tablas) */
+async function aiShrink(file, px) {
   let bmp; try { bmp = await createImageBitmap(file); } catch (e) { throw aiErr("image_rejected"); }
-  const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
+  const k = Math.min(1, (px || 1280) / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas"); c.width = Math.max(1, Math.round(bmp.width * k)); c.height = Math.max(1, Math.round(bmp.height * k));
   c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); if (bmp.close) bmp.close();
   return { type: "image", media_type: "image/jpeg", data: c.toDataURL("image/jpeg", 0.82).split(",")[1] };
 }
 async function aiCall(prompt, o) {
   const me = cs; if (!me || !me.token) throw aiErr("session_expired");
   if (!me.aiok) { if (!(await aiAsk())) throw aiErr("need_ok"); me.aiok = true; if (cs === me) cStore(me); }
-  const content = []; for (const f of Array.from((o && o.images && (o.images instanceof Blob ? [o.images] : o.images)) || [])) content.push(await aiShrink(f));
+  const content = []; for (const f of Array.from((o && o.images && (o.images instanceof Blob ? [o.images] : o.images)) || [])) content.push(await aiShrink(f, o.px));
   for (const f of (o && o.docs) || []) { // los PDF van tal cual: los lee el modelo, sin pasar por ningún OCR
     if (f.size > 4 * 1024 * 1024) throw aiErr("too_big");
     const u8 = new Uint8Array(await f.arrayBuffer()); let bin = ""; for (let i = 0; i < u8.length; i += 32768) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));

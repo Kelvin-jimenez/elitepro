@@ -39,7 +39,7 @@ try {
   await p.fill('#dt-by', 'Clara'); await p.dispatchEvent('#dt-by', 'change'); await wait(250); await p.click('#sh-diet [data-close].btn'); await wait(250);
   ok('montar el plan no cambia lo comido hoy', (await T('#d-label .kv')) === kc0);
   let dc = await T('#diet-card');
-  ok('Hoy: plan 726 kcal frente a 1732 del día → se queda corto 1006', await p.isVisible('#diet-card') && /Se queda corto/.test(dc) && /726/.test(dc) && /1732/.test(dc) && /−1006/.test(dc) && /un día sin entreno/.test(dc) && /Clara/.test(dc), dc);
+  ok('Hoy: plan 726 kcal frente a 1732 del día → se queda corto 1006', await p.isVisible('#diet-card') && /Por debajo/.test(dc) && /726/.test(dc) && /≈ 1730/.test(dc) && /−1010/.test(dc) && /un día sin entreno/.test(dc) && /Clara/.test(dc) && /estimación/.test(dc) && /entre 1560 y 1910/.test(dc) && /puede que esté a medias/.test(dc), dc);
   ok('el momento vacío con plan ofrece «Apuntar lo pautado»', await p.isVisible('#d-meals [data-log-plan="com"]') && !(await p.$('#d-meals [data-log-plan="des"]')));
   await p.click('#d-meals [data-log-plan="com"]'); await wait(300);
   ok('apuntar lo pautado: la comida entra con 248 kcal', /Comida\s*248 kcal/.test(await T('#d-meals .slots')), await T('#d-meals .slots'));
@@ -50,7 +50,8 @@ try {
   await p.fill('#dt-kcal', '1700'); await p.fill('#dt-p', '140'); await p.fill('#dt-c', '180'); await p.fill('#dt-f', '50'); await p.click('#dt-save'); await wait(300); await p.click('#sh-diet [data-close].btn'); await wait(250);
   dc = await T('#diet-card'); ok('plan solo con totales (1700): encaja con un día de 1732', /Encaja/.test(dc) && /1700/.test(dc), dc);
   await p.click('#train-card [data-sheet="plan"]'); await wait(200); await p.selectOption('#sh-plan-body select', 'crossfit'); await wait(250); await p.click('#sh-plan [data-close].btn'); await wait(250);
-  dc = await T('#diet-card'); ok('con crossfit de 60′ el día pide 2141: el mismo plan se queda corto 441, sobre todo en hidratos', /Se queda corto/.test(dc) && /crossfit de 60′/.test(dc) && /441 kcal/.test(dc) && /hidratos/.test(dc), dc);
+  dc = await T('#diet-card'); ok('con crossfit de 60′ el día pide 2141: el mismo plan se queda corto 441, sobre todo en hidratos', /Por debajo/.test(dc) && /crossfit de 60′/.test(dc) && /440 kcal/.test(dc) && /hidratos/.test(dc), dc);
+  ok('con un plan cerrado, el objetivo del día es el plan y el cálculo de la app queda como estimación con margen', /1700/.test(await T('#d-label .hero-goal')) && /Objetivo: tu plan pautado/.test(await T('#d-label .formula')) && /unas 2140 kcal \(entre 1930 y 2350\)/.test(await T('#d-label .formula')) && /Cifras según tu plan pautado/.test(await T('#d-falta')), await T('#d-label'));
   await p.click('#train-card [data-sheet="act"]'); await wait(200); await p.fill('#a-min', '60'); await p.fill('#a-kcal', '900'); await p.click('#act-form button[type=submit]'); await wait(300);
   dc = await T('#diet-card'); ok('con el entreno ya hecho compara con lo entrenado de verdad', /lo que has entrenado/.test(dc), dc);
   await go('#datos'); await p.fill('#p-weight', '72'); await p.click('#p-form button[type=submit]'); await wait(400);

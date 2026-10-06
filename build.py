@@ -34,6 +34,8 @@ rep('      <div class="card">\n        <div class="eyebrow">Empezar de cero</div
 rep('/* ---------- Empezar de cero ---------- */', js + '/* ---------- Empezar de cero ---------- */')
 rep('goLocal("Estás sin sesión: lo que apuntes se guarda solo en este navegador.")', 'goLocal("Lo que apuntes se guarda solo en este navegador. Descarga una copia de vez en cuando desde Perfil.")')
 rep('"Leer fotos solo funciona en la app publicada, abierta dentro de Claude. Aquí apúntalo a mano o elige de la lista."', '"Esta versión no lee fotos. Apúntalo a mano o elige de la lista."')
+# pdf.js va con la propia web (carpeta vendor), sin pedirlo a terceros
+rep('const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/"', 'const PDFJS = "vendor/pdfjs/"')
 rep('placeholder="73,0"', 'placeholder="70,0"'); rep('placeholder="35"', 'placeholder="30"')
 i = s.index('<div class="app">')
 doc = ('<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
@@ -47,6 +49,7 @@ out.write_text(doc, encoding='utf8')
 if out.parent.resolve() != here:  # al construir en otra carpeta (pruebas), van también los archivos de la app instalable
     for f in ('sw.js', 'manifest.webmanifest'): shutil.copy(here / f, out.parent / f)
     shutil.copytree(here / 'icons', out.parent / 'icons', dirs_exist_ok=True)
+    shutil.copytree(here / 'vendor', out.parent / 'vendor', dirs_exist_ok=True)
 print('ok', out, len(doc))
 if cfg['url']:
     for name in ('panel.html', 'privacidad.html'):

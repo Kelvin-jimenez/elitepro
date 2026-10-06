@@ -227,6 +227,10 @@ document.addEventListener("click", async e => {
 const SLOTN = { des: "Desayuno", mm: "Media mañana", com: "Comida", mer: "Merienda", cen: "Cena", ent: "Antes o después de entrenar" };
 function planHtml(p) {
   const d = p && p.diet; if (!d) return "";
+  if (Array.isArray(d.kinds) && d.kinds.length) { // plan leído de un documento: tipos de día con sus opciones
+    const n = k => k.moms.reduce((x, m) => x + m.opts.length, 0);
+    return `<div><div class="eyebrow">Plan pautado${d.by ? " por " + esc(d.by) : ""}</div><p>${d.kinds.length === 1 ? "1 tipo de día" : d.kinds.length + " tipos de día"} · ${d.kinds.reduce((x, k) => x + n(k), 0)} opciones</p><p class="sub">${d.kinds.map(k => "<b>" + esc(k.n) + ":</b> " + k.moms.map(m => esc(m.n) + " (" + m.opts.map(o => esc(o.n)).join(" / ") + ")").join(", ")).join(" · ").slice(0, 4000)}</p></div>`;
+  }
   const items = Object.keys(SLOTN).flatMap(k => ((d.slots || {})[k] || []).map(m => Object.assign({ k }, m)));
   const t = items.length ? items.reduce((a, x) => ({ kcal: a.kcal + (x.kcal || 0), p: a.p + (x.p || 0), c: a.c + (x.c || 0), f: a.f + (x.f || 0) }), { kcal: 0, p: 0, c: 0, f: 0 }) : d.tot;
   if (!t || !(t.kcal > 0)) return "";

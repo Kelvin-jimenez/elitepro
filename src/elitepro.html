@@ -195,6 +195,13 @@ dl.kv .over dd{color:var(--crit)}
 #diet-card{grid-column:1 / -1}
 .dslot{border-top:1px solid var(--line);padding-top:10px}
 .dslot-h{display:flex;align-items:center;gap:10px}.dslot-h b{flex:1 1 auto}
+.popts{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.popts li{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.popts li>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.popts small{color:var(--muted);font-size:.82rem;line-height:1.35}
+.pnotes{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--ink-2);font-size:.88rem}
+.kd{border-top:1px solid var(--line);padding-top:10px}.kd>summary{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;color:var(--ink);font-size:1rem}
+.pbar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;width:100%}.pbar i{display:block;height:100%;background:var(--mark);transition:width .3s}
 .dtot{background:var(--surface-2);border-radius:12px;padding:11px 13px}
 .rems{list-style:none;margin:0;padding:0}
 .rems li{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
@@ -748,6 +755,10 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
   <p class="sub">Orientación general. No sustituye a tu médico ni ajusta medicación.</p>
 </div></dialog>
 
+<dialog class="sheet" id="sh-popt" aria-labelledby="sh-popt-t"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="sh-popt-t">Tu plan</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div id="popt-body" class="col" style="gap:12px"></div>
+</div></dialog>
 <dialog class="sheet" id="sh-diet" aria-labelledby="sh-diet-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-diet-t">Tu plan pautado</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div id="diet-body" class="col" style="gap:12px"></div>
@@ -1126,6 +1137,17 @@ function target(date) {
   if (hl.cond && hl.hcDay > 0 && carb > hl.hcDay) { carb = hl.hcDay; fat = Math.max(fat, (kcal - prot * 4 - carb * 4) / 9); lim = true; }
   return { bmr, base, ex, adj, kcal, prot, fat, carb, real: acts.length > 0, floor: raw < bmr, race, cut: race && g.adj < 0, taper: taper && g.adj < -0.10 && !hcap, hcap, icap, lim };
 }
+/* Objetivo del día. Si hay plan pautado y marca un menú cerrado (o la persona lo ha pedido así), el objetivo es el plan y el cálculo de la app queda como estimación (`est`).
+   El día de la prueba y el anterior se sigue el cálculo sin déficit, salvo que el plan traiga su propio menú para esos días. */
+function goal(date) {
+  const t = target(date), d = diet(); if (!d || d.goal === "app") return t;
+  const dt = dietTotals(date); if (!dt || !(dt.kcal > 0)) return t;
+  if (d.goal !== "plan" && (dt.open || dt.kcal < 0.9 * t.bmr)) return t; // en automático: ni planes con opciones a elegir ni planes que no llegan al gasto en reposo (suelen estar a medias)
+  const pk = planKind(date); if (t.race && !(pk && /^(comp|pre)/.test(pk.k.h))) return t;
+  const hl = S.profile.health || {}; let prot = dt.macros ? dt.p : Math.min(t.prot, dt.kcal * 0.35 / 4), fat = dt.macros ? dt.f : Math.min(t.fat, dt.kcal * 0.35 / 9), carb = dt.macros ? dt.c : Math.max(0, (dt.kcal - prot * 4 - fat * 9) / 4);
+  if (hl.cond && hl.hcDay > 0 && carb > hl.hcDay) carb = hl.hcDay;
+  return Object.assign({}, t, { kcal: dt.kcal, prot, fat, carb, plan: true, est: t, floor: false });
+}
 function totals(date) {
   const m = (S.days[date] && S.days[date].meals) || [];
   return m.reduce((t, x) => ({ kcal: t.kcal + (x.kcal || 0), p: t.p + (x.p || 0), c: t.c + (x.c || 0), f: t.f + (x.f || 0), az: t.az + (x.az || 0), fi: t.fi + (x.fi || 0) }), { kcal: 0, p: 0, c: 0, f: 0, az: 0, fi: 0 });
@@ -1150,6 +1172,7 @@ function falta(d, t, tot) {
   else if (!gaps.length) out.push(`<p class="guide">Has apuntado ${yList(done)}. Objetivo del día cumplido.</p>`);
   else if (rk < -0.05 * t.kcal) out.push(`<p class="guide">Has apuntado ${yList(done)} y ya has cubierto las calorías${rp >= 10 ? `, pero te ${v} <b>${nf(rp)} g de proteína</b>` : ""}.</p>`);
   else out.push(`<p class="guide">Has apuntado ${yList(done)}. Te ${v} ${yList(gaps)}${rk > 0 ? ` (${nf(rk)} kcal)` : ""}.</p>`);
+  if (t.plan) out.push(`<p class="sub">Cifras según tu plan pautado.</p>`);
   if (past || !gaps.length) return `<div class="falta"><div class="eyebrow">Lo que te falta</div>${out.join("")}</div>`;
   const hl = health(), dm = isDm();
   if (left.length && rk > 0) {
@@ -1225,7 +1248,7 @@ function weekWeightDelta(ref) {
 const openSlots = new Set();
 
 function rHoy() {
-  const d = S.date, t = target(d), tot = totals(d), day = S.days[d] || {}, s = planned(d), ty = TYPES[s.type] || TYPES.descanso;
+  const d = S.date, t = goal(d), est = t.est || t, tot = totals(d), day = S.days[d] || {}, s = planned(d), ty = TYPES[s.type] || TYPES.descanso;
   const isToday = d === today(), dm = isDm(), hl = health(), w = S.profile.weight;
   const hNow = new Date().getHours(), hi = hNow < 6 ? "Buenas noches" : hNow < 13 ? "Buenos días" : hNow < 21 ? "Buenas tardes" : "Buenas noches";
   const dd = parse(d), fecha = cap(dd.toLocaleDateString("es-ES", { weekday: "long" })) + " · " + dd.toLocaleDateString("es-ES", { day: "numeric", month: "long" });
@@ -1248,7 +1271,7 @@ function rHoy() {
       </div>
       <div class="ring">${ring("kcal", pct, { aria: nf(pct) + " por ciento del objetivo consumido", color: over ? "var(--crit)" : "var(--mark)" })}<div class="ring-c"><b class="num">${nf(Math.min(999, pct))}<small>%</small></b><span>consumido</span></div></div>
     </div>
-    <p class="formula num">Tu día ${nf(t.base)} + ${exLabel} ${nf(t.ex)}${adjTxt} = ${nf(t.kcal)} kcal${t.cut ? " (sin déficit por la competición)" : ""}${t.taper ? " (semana de la prueba: déficit suave)" : ""}${t.hcap ? " (modo salud: déficit suave)" : ""}${t.icap ? " (lesión: déficit suave para recuperar)" : ""}${t.lim ? " · con los límites de tu médico" : ""}${t.floor ? " (suelo: tu gasto en reposo)" : ""}</p>`;
+    <p class="formula num">${t.plan ? `Objetivo: tu plan pautado${planKind(d) ? " (" + esc(planKind(d).k.n) + ")" : ""}. La app estima para ${isToday ? "hoy" : "ese día"} unas ${nf(r10(est.kcal))} kcal (entre ${nf(r10(est.kcal * 0.9))} y ${nf(r10(est.kcal * 1.1))}).</p>` : `Tu día ${nf(t.base)} + ${exLabel} ${nf(t.ex)}${adjTxt} = ${nf(t.kcal)} kcal${t.cut ? " (sin déficit por la competición)" : ""}${t.taper ? " (semana de la prueba: déficit suave)" : ""}${t.hcap ? " (modo salud: déficit suave)" : ""}${t.icap ? " (lesión: déficit suave para recuperar)" : ""}${t.lim ? " · con los límites de tu médico" : ""}${t.floor ? " (suelo: tu gasto en reposo)" : ""}</p>`}`;
 
   /* --- macronutrientes --- */
   const mc = (k, name, v, max, cls, color) => `<div class="mcard"><span class="eyebrow"><i class="dot" style="background:var(--${color})"></i>${name}</span><p class="mval num"><b>${nf(v)}</b> / ${nf(max)} g</p>${bar(k, v, max, cls)}</div>`;
@@ -1280,13 +1303,14 @@ function rHoy() {
     </div>`;
 
   /* --- nutrición: resumen por momentos, detalle al desplegar --- */
-  const meals = day.meals || [], MAINS = ["des", "com", "mer", "cen"], dplan = diet(), dslots = (dplan && dplan.slots) || {};
+  const meals = day.meals || [], MAINS = ["des", "com", "mer", "cen"], dplan = diet(), dslots = (dplan && dplan.slots) || {}, pk = planKind(d);
+  const planBtn = k => pk ? (pk.k.moms.some(m => m.s === k) ? `<button class="btn ghost sm" type="button" data-plan-slot="${k}">Elegir del plan</button>` : "") : (dslots[k] || []).length ? `<button class="btn ghost sm" type="button" data-log-plan="${k}">Apuntar lo pautado</button>` : "";
   $("#d-meals").innerHTML = `
     <div class="card-head"><span class="eyebrow">Nutrición</span><span class="sub num">${meals.length ? nf(tot.kcal) + " kcal apuntadas" : "Sin comidas apuntadas"}</span></div>
     <div class="slots">${SLOTS.map(([k, n]) => {
-      const ms = meals.filter(m => m.slot === k), pl = dslots[k] || []; if (!ms.length && !MAINS.includes(k) && !pl.length) return "";
+      const ms = meals.filter(m => m.slot === k), pl = planBtn(k); if (!ms.length && !MAINS.includes(k) && !pl) return "";
       const add = `<button class="slot-add" type="button" data-add-slot="${k}" aria-label="Añadir a ${n.toLowerCase()}">+</button>`;
-      if (!ms.length) return `<div class="slot empty-slot"><span>${n}</span><span class="slot-r">${pl.length ? `<button class="btn ghost sm" type="button" data-log-plan="${k}">Apuntar lo pautado</button>` : ""}${add}</span></div>`;
+      if (!ms.length) return `<div class="slot empty-slot"><span>${n}</span><span class="slot-r">${pl}${add}</span></div>`;
       const kc = ms.reduce((x, m) => x + m.kcal, 0), hc = ms.reduce((x, m) => x + (m.c || 0), 0), overL = hl.cond && hl.hcMeal > 0 && hc > hl.hcMeal;
       return `<details class="slot" data-slot="${k}" ${openSlots.has(k) ? "open" : ""}><summary><span>${n}${overL ? ` <span class="chip bad">Supera tu límite</span>` : ""}</span><span class="slot-r"><span class="num"><b>${nf(kc)}</b> kcal${hl.cond ? ` · ${nf(hc)} g HC (${rac(hc)} rac.)` : ""}</span>${add}</span></summary>
         <ul class="meals">${ms.map(m => `<li>
@@ -1295,29 +1319,42 @@ function rHoy() {
           <button class="btn ghost sm" type="button" data-edit-meal="${esc(m.id)}">Editar</button>
           <button class="icon-btn" type="button" data-del-meal="${esc(m.id)}" aria-label="Borrar ${esc(m.name)}">×</button>
           <small class="num">P ${nf(m.p)} · H ${nf(m.c)} · G ${nf(m.f)} g${hl.cond && m.az > 0 ? " · azúcares " + nf(m.az) + " g" : ""}</small>
-        </li>`).join("")}</ul></details>`;
+        </li>`).join("")}</ul>${pk && pl ? `<div class="row" style="padding:8px 0 2px">${pl}</div>` : ""}</details>`;
     }).join("")}</div>
     <div class="row actions"><button class="btn" type="button" data-sheet="meal">+ Añadir comida</button><button class="btn ghost" type="button" data-sheet="calc">Buscar alimento</button></div>
-    ${dietTotals() ? "" : `<p class="sub"><button class="linkbtn" type="button" data-sheet="diet">¿Tienes un plan pautado por tu nutricionista? Añádelo</button> y te digo cada día si encaja con lo que entrenas.</p>`}`;
+    ${dietTotals() || pk ? "" : `<p class="sub"><button class="linkbtn" type="button" data-sheet="diet">¿Tienes un plan pautado por tu nutricionista? Añádelo</button> y te digo cada día si encaja con lo que entrenas.</p>`}`;
 
   /* --- plan pautado frente a lo que pide el día --- */
-  const dtot = dietTotals(); $("#diet-card").hidden = !dtot;
-  if (dtot) {
-    const diff = dtot.kcal - t.kcal, rel = t.kcal > 0 ? diff / t.kcal : 0, st = rel < -0.10 ? "corto" : rel > 0.10 ? "sobra" : "encaja";
-    const actTxt = t.real ? "lo que has entrenado" : s.unset || s.type === "descanso" ? "un día sin entreno" : `${ty.n.toLowerCase()} de ${nf(s.min)}′`;
-    const gaps = dtot.macros ? [["hidratos", dtot.c - t.carb, 4], ["proteína", dtot.p - t.prot, 4], ["grasa", dtot.f - t.fat, 9]] : [];
-    const worst = gaps.filter(g => st === "corto" ? g[1] < -5 : st === "sobra" ? g[1] > 5 : false).sort((a, b) => Math.abs(b[1] * b[2]) - Math.abs(a[1] * a[2]))[0];
-    const line = st === "encaja" ? `Tu plan encaja con el día: ${actTxt}.`
-      : st === "corto" ? `Con ${actTxt}, tu plan se queda corto unas <b class="hlb">${nf(-diff)} kcal</b>${worst ? `, sobre todo en ${worst[0]} (unos ${nf(-worst[1])} g menos de lo que pide el día)` : ""}.`
-      : `Con ${actTxt}, tu plan te da unas <b class="hlb">${nf(diff)} kcal de más</b>${worst ? `, sobre todo en ${worst[0]} (unos ${nf(worst[1])} g de más)` : ""}.`;
-    const protLow = dtot.macros && dtot.p < 0.9 * t.prot && !(worst && worst[0] === "proteína");
-    const who = dplan.by ? esc(dplan.by) : "quien te lo ha pautado";
-    $("#d-diet").innerHTML = `
-      <div class="card-head"><span class="eyebrow">Tu plan pautado</span><span class="chip ${st === "encaja" ? "done" : st === "corto" ? "bad" : "now"}">${st === "encaja" ? "Encaja" : st === "corto" ? "Se queda corto" : "Sobra"}</span></div>
-      <dl class="kv"><div><dt>Tu plan</dt><dd class="num">${nf(dtot.kcal)} <small>kcal</small></dd></div><div><dt>${isToday ? "Hoy" : "Ese día"} necesitas</dt><dd class="num">${nf(t.kcal)} <small>kcal</small></dd></div><div><dt>Diferencia</dt><dd class="num">${diff > 0 ? "+" : diff < 0 ? "−" : ""}${nf(Math.abs(diff))} <small>kcal</small></dd></div></dl>
+  const dtot = dietTotals(d); $("#diet-card").hidden = !(dtot || pk);
+  if (dtot || pk) {
+    const who = dplan.by ? esc(dplan.by) : "quien te lo ha pautado", ks = kinds() || [];
+    const anyRow = pk ? pk.k.moms.flatMap(m => m.opts).find(o => (o.rows || []).some(r => r[0] || r[1] || r[2])) : null, rl = anyRow ? rowLbl(myRow(anyRow, d)) : "";
+    let chip = pk ? `<span class="chip">${esc(pk.k.n)}</span>` : "", cmp = "";
+    if (dtot) {
+      const diff = dtot.kcal - est.kcal, rel = est.kcal > 0 ? diff / est.kcal : 0, st = rel < -0.10 ? "corto" : rel > 0.10 ? "sobra" : "encaja";
+      const actTxt = t.real ? "lo que has entrenado" : s.unset || s.type === "descanso" ? "un día sin entreno" : `${ty.n.toLowerCase()} de ${nf(s.min)}′`;
+      const gaps = dtot.macros ? [["hidratos", dtot.c - est.carb, 4], ["proteína", dtot.p - est.prot, 4], ["grasa", dtot.f - est.fat, 9]] : [];
+      const worst = gaps.filter(g => st === "corto" ? g[1] < -5 : st === "sobra" ? g[1] > 5 : false).sort((a, b) => Math.abs(b[1] * b[2]) - Math.abs(a[1] * a[2]))[0];
+      const rng = dtot.open && dtot.hi - dtot.lo > 50, mine = rng ? "tu plan, según las opciones que elijas," : "tu plan";
+      const line = st === "encaja" ? `Tu plan encaja con el día: ${actTxt}.`
+        : st === "corto" ? `Con ${actTxt}, ${mine} queda unas <b class="hlb">${nf(r10(-diff))} kcal</b> por debajo de lo que estima la app${worst ? `, sobre todo en ${worst[0]} (unos ${nf(r10(-worst[1]))} g menos)` : ""}.`
+        : `Con ${actTxt}, ${mine} queda unas <b class="hlb">${nf(r10(diff))} kcal</b> por encima de lo que estima la app${worst ? `, sobre todo en ${worst[0]} (unos ${nf(r10(worst[1]))} g más)` : ""}.`;
+      const protLow = dtot.macros && dtot.p < 0.9 * est.prot && !(worst && worst[0] === "proteína");
+      if (!pk || ks.length < 2) chip = `<span class="chip ${st === "encaja" ? "done" : st === "corto" ? "bad" : "now"}">${st === "encaja" ? "Encaja" : st === "corto" ? "Por debajo" : "Por encima"}</span>`;
+      cmp = `<dl class="kv"><div><dt>Tu plan</dt><dd class="num">${rng ? kcalRange(dtot) : nf(dtot.kcal)} <small>kcal</small></dd></div><div><dt>La app estima</dt><dd class="num">≈ ${nf(r10(est.kcal))} <small>kcal</small></dd></div><div><dt>Diferencia</dt><dd class="num">≈ ${diff > 5 ? "+" : diff < -5 ? "−" : ""}${nf(r10(Math.abs(diff)))} <small>kcal</small></dd></div></dl>
       <p>${line}</p>
-      ${protLow ? `<p class="sub">La proteína del plan (${nf(dtot.p)} g) queda por debajo de lo que te toca (${nf(t.prot)} g).</p>` : ""}
-      <p class="sub">Es una orientación a partir de tu entreno y tus datos; no sustituye a tu plan. Antes de cambiar nada, coméntalo con ${who}.${dm ? " Con diabetes, no ajustes hidratos ni medicación por tu cuenta." : ""}</p>
+      ${protLow ? `<p class="sub">La proteína del plan (${nf(dtot.p)} g) queda por debajo de la que calcula la app (${nf(est.prot)} g).</p>` : ""}
+      ${st === "corto" && rel < -0.25 ? `<p class="sub">Un plan de pérdida de grasa va por debajo del gasto a propósito, así que esto por sí solo no es un fallo. Si la diferencia se repite muchos días y notas más cansancio, peor recuperación, hambre fuerte${S.profile.sex === "f" ? ", peor rendimiento o cambios en el ciclo" : " o peor rendimiento"}, enséñaselo a ${who}: puede hacer falta ajustar el plan a lo que entrenas.</p>` : ""}
+      ${!t.plan && dplan.goal !== "app" && !dtot.open && dtot.kcal < 0.9 * est.bmr && !est.race ? `<p class="sub">Tu plan suma menos que tu gasto en reposo aproximado (${nf(r10(est.bmr))} kcal), así que puede que esté a medias: por eso el objetivo del día sigue siendo el cálculo de la app. Si tu plan es así, elige «Siempre mi plan pautado» al verlo.</p>` : ""}
+      <p class="sub">La cifra de la app es una estimación con fórmulas: el gasto real puede variar un 10–15 % (entre ${nf(r10(est.kcal * 0.9))} y ${nf(r10(est.kcal * 1.1))} kcal). No sustituye a tu plan: antes de cambiar nada, coméntalo con ${who}.${dm ? " Con diabetes, no ajustes hidratos ni medicación por tu cuenta." : ""}</p>`;
+    }
+    const notes = pk && pk.k.notes ? pk.k.notes : [];
+    $("#d-diet").innerHTML = `
+      <div class="card-head"><span class="eyebrow">Tu plan pautado</span>${chip}</div>
+      ${pk && ks.length > 1 ? `<label class="fld">Tipo de día<select data-kind-sel="${d}" aria-label="Tipo de día del plan"><option value="" ${pk.auto ? "selected" : ""}>Automático${pk.auto ? ": " + esc(pk.k.n) : ""}</option>${ks.map(k => `<option value="${esc(k.id)}" ${!pk.auto && k.id === pk.k.id ? "selected" : ""}>${esc(k.n)}</option>`).join("")}</select></label>` : ""}
+      ${pk ? `<p class="sub">${pk.auto ? (ks.length > 1 ? "Lo elige la app por tu entreno y tus competiciones; cámbialo si no es el que toca. " : "") : "Elegido por ti para este día. "}${rl ? "Cantidades para " + esc(rl) + ". " : ""}En Nutrición, pulsa «Elegir del plan» en cada comida.</p>` : ""}
+      ${cmp}
+      ${notes.length ? `<details class="how"><summary>Pautas de ${esc(pk.k.n.toLowerCase())}</summary><ul class="pnotes" style="padding-top:8px">${notes.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
       <div class="row actions"><button class="btn ghost sm" type="button" data-sheet="diet">Ver o cambiar el plan</button></div>`;
   }
 
@@ -1368,7 +1405,7 @@ function rGlu(d, day) {
 }
 
 /* Objetivo cumplido un día: hay comidas apuntadas, las calorías quedan a ±10 % del objetivo y la proteína llega al 90 % */
-const metDay = d => { const m = (S.days[d] || {}).meals || []; if (!m.length) return false; const t = target(d), tot = totals(d); return Math.abs(tot.kcal - t.kcal) <= 0.10 * t.kcal && tot.p >= 0.9 * t.prot; };
+const metDay = d => { const m = (S.days[d] || {}).meals || []; if (!m.length) return false; const t = goal(d), tot = totals(d); return Math.abs(tot.kcal - t.kcal) <= 0.10 * t.kcal && tot.p >= 0.9 * t.prot; };
 const zoneShort = i => i.zone === "otra" ? "molestia" : ZONES[i.zone].n.replace(/^(la|el|los) /, "");
 
 function rSemana() {
@@ -1379,7 +1416,7 @@ function rSemana() {
     <div class="nav-btns"><button class="round" type="button" data-wk="-7" aria-label="Semana anterior">‹</button>${S.week === monday(t0) ? "" : `<button class="btn ghost sm" type="button" data-wk="0">Esta semana</button>`}<button class="round" type="button" data-wk="7" aria-label="Semana siguiente">›</button></div>`;
   let kc = 0, ses = 0, done = 0, km = 0;
   const info = days.map((d, i) => {
-    const s = planned(d), t = target(d), day = S.days[d] || {}, acts = day.acts || [];
+    const s = planned(d), t = goal(d), day = S.days[d] || {}, acts = day.acts || [];
     kc += t.kcal; if (!s.unset && s.type !== "descanso") ses++; if (acts.length) done++; km += acts.reduce((x, a) => x + (a.km || 0), 0);
     return { d, i, s, t, acts, ev: eventOn(d), meals: (day.meals || []).length, met: metDay(d) };
   });
@@ -1438,7 +1475,7 @@ function scores(n) {
     if (!s.unset && s.type !== "descanso") { plan++; if (acts) did++; }
     if (meals.length || acts || day.weight > 0 || (day.glu || []).length) logged++;
     if (meals.length) {
-      const t = target(d), tot = totals(d), dev = Math.abs(tot.kcal - t.kcal) / t.kcal;
+      const t = goal(d), tot = totals(d), dev = Math.abs(tot.kcal - t.kcal) / t.kcal;
       nut.push(0.6 * (dev <= 0.10 ? 100 : Math.max(0, 100 * (1 - (dev - 0.10) / 0.30))) + 0.4 * Math.min(100, tot.p / t.prot * 100));
     }
   });
@@ -1449,7 +1486,7 @@ function scores(n) {
 
 function rProgreso() {
   const t0 = today(), days = [...Array(14)].map((_, i) => addDays(t0, i - 13));
-  const rows = days.map(d => ({ d, eat: totals(d).kcal, tgt: target(d).kcal }));
+  const rows = days.map(d => ({ d, eat: totals(d).kcal, tgt: goal(d).kcal }));
   const ws = Object.values(S.days).filter(x => x.weight > 0).sort((a, b) => a.date < b.date ? -1 : 1);
   const wd = ws.length > 1 ? ws[ws.length - 1].weight - ws[0].weight : null;
   const s28 = scores(28), s14 = scores(14), s7 = scores(7), pc = v => v == null ? "—" : nf(v) + " %";
@@ -1482,7 +1519,7 @@ function rProgreso() {
   chartKcal(rows); chartPeso(ws); if (isDm()) chartGlu(days);
   $("#tb-kcal").innerHTML = `<table><thead><tr><th>Día</th><th>Comido</th><th>Objetivo</th><th>Diferencia</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(shortDate(r.d))}</td><td>${r.eat ? nf(r.eat) : "—"}</td><td>${nf(r.tgt)}</td><td>${r.eat ? (r.eat - r.tgt > 0 ? "+" : "") + nf(r.eat - r.tgt) : "—"}</td></tr>`).join("")}</tbody></table>`;
 
-  chartCols("#ch-prot", days.map(d => { const p = totals(d).p, tg = target(d).prot; return { lab: String(parse(d).getDate()), v: p, tgt: tg, tip: shortDate(d) + ": " + (p ? nf(p) + " g de proteína" : "sin apuntar") + " · objetivo " + nf(tg) }; }),
+  chartCols("#ch-prot", days.map(d => { const p = totals(d).p, tg = goal(d).prot; return { lab: String(parse(d).getDate()), v: p, tgt: tg, tip: shortDate(d) + ": " + (p ? nf(p) + " g de proteína" : "sin apuntar") + " · objetivo " + nf(tg) }; }),
     { color: "var(--prot)", aria: "Proteína comida frente al objetivo, últimos 14 días", empty: "Apunta tus comidas y aquí verás la proteína de cada día frente a tu objetivo.", unit: "g" });
   chartCols("#ch-ent", days.map(d => { const a = (S.days[d] || {}).acts || [], mn = a.reduce((x, y) => x + (y.min || 0), 0); return { lab: String(parse(d).getDate()), v: mn, tip: shortDate(d) + ": " + (a.length ? nf(mn) + " min en " + a.length + (a.length > 1 ? " entrenos" : " entreno") : "sin entreno registrado") }; }),
     { aria: "Minutos de entrenamiento por día, últimos 14 días", empty: "Registra tus entrenos y aquí verás los minutos de cada día.", unit: "min" });
@@ -1782,69 +1819,296 @@ $("#f-more").addEventListener("click", () => addMeal(true));
 
 /* ---------- Plan de nutrición pautado ---------- */
 const diet = () => (S.profile && S.profile.diet) || null;
-/* Totales del plan: la suma de lo apuntado por comidas o, si no hay detalle, los totales puestos a mano */
-function dietTotals() {
+/* Un plan leído de un documento se guarda por tipos de día (`kinds`): cada tipo tiene momentos, cada momento opciones y cada opción su tabla de cantidades por sexo y peso.
+   Un plan apuntado a mano sigue siendo un solo día (`slots`) o solo sus totales (`tot`). */
+const kinds = () => { const d = diet(); return d && Array.isArray(d.kinds) && d.kinds.length ? d.kinds : null; };
+const pNorm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9+\- ]/g, " ").replace(/\s+/g, " ").trim();
+const DOWN = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+/* De la etiqueta del documento («Días intensos», «48 h antes», «Lunes»…) a una clave para agrupar y para elegir el tipo de día solo */
+function kindKey(label) {
+  const t = pNorm(label), ds = DOWN.map((x, i) => t.includes(x) ? i : -1).filter(i => i >= 0);
+  if (ds.length) { const m = t.match(/(\w+) a (\w+)/), a = m ? DOWN.indexOf(m[1]) : -1, b = m ? DOWN.indexOf(m[2]) : -1; return "dow" + (a >= 0 && b > a ? DOWN.map((x, i) => i).filter(i => i >= a && i <= b) : ds).join(""); }
+  const i2 = t.search(/48|dia ?-2|2 dias antes/), i1 = t.search(/24|dia ?-1|dia anterior|vispera/);
+  if (i2 >= 0 && (i1 < 0 || i2 < i1)) return "pre2";
+  if (i1 >= 0) return "pre1";
+  if (/compet|compit|carrera|prueba/.test(t)) return /manana/.test(t) ? "comp-am" : /mediodia/.test(t) ? "comp-md" : /tarde/.test(t) ? "comp-pm" : "comp";
+  if (/recarga|refeed|carga de (hidratos|carbo)/.test(t)) return "recarga";
+  if (/descans|baja carga|recuperacion|libre|sin entren|no entren/.test(t)) return "descanso";
+  if (/intens|alta carga|dur[oa]s?\b|fuerte|doble/.test(t)) return "intenso";
+  if (/moder|media carga|normal|suave/.test(t)) return "moderado";
+  if (/entren/.test(t)) return "entreno";
+  return "x:" + (t.replace(/\b(dias?|de|del|los|las|el|la|tipo|plan|menu)\b/g, " ").replace(/\s+/g, " ").trim() || "todos");
+}
+const momKey = (slot, mom) => { const t = pNorm(mom); return slot !== "ent" ? slot : "ent:" + (/intra|durante/.test(t) ? "intra" : /post|despues|recuper|al acabar/.test(t) ? "post" : /pre|antes/.test(t) ? "pre" : t); };
+/* Cantidades tal como vienen en la tabla: «40», «2-3» (se toma el punto medio), «1/2»; «0» es «al gusto» */
+const qv = q => { q = String(q == null ? "" : q).replace(/,/g, "."); const m = q.match(/\d+(\.\d+)?/g); if (!m) return 0; if (m.length === 2 && /\d\s*\/\s*\d/.test(q) && +m[1] > 0) return +m[0] / +m[1]; return m.length > 1 ? (+m[0] + +m[1]) / 2 : +m[0]; };
+const qShow = x => !x.txt ? "" : x.txt === "0" ? "al gusto" : x.txt.replace(/-/g, "–").replace(/\./g, ",") + " " + (x.u === "ud" ? "ud" : x.u);
+const rowKey = r => (r[1] || 0) + "-" + (r[2] || 0);
+const rowLbl = r => { if (!r) return ""; const sx = r[0] === "f" ? "mujer" : r[0] === "m" ? "hombre" : "", rg = r[1] && r[2] ? `${nf(r[1])}–${nf(r[2])} kg` : r[1] ? `+${nf(r[1])} kg` : r[2] ? `hasta ${nf(r[2])} kg` : ""; return [sx, rg].filter(Boolean).join(" "); };
+/* La fila de la tabla que le toca a la persona: su sexo y el tramo de su peso (o el que haya fijado ella); si queda fuera de todos, el más cercano */
+function myRow(o, date, noPref) {
+  const rows = (o && o.rows) || []; if (!rows.length) return null;
+  const p = S.profile || {}, w = ((S.days[date] || {}).weight) || p.weight || 0, sx = p.sex === "f" ? "f" : "m", pref = noPref ? "" : (diet() || {}).row;
+  let c = rows.filter(r => !r[0] || r[0] === sx); if (!c.length) c = rows;
+  if (pref) { const m = c.find(r => rowKey(r) === pref); if (m) return m; }
+  const gap = r => r[1] && w < r[1] ? r[1] - w : r[2] && w >= r[2] ? w - r[2] + 0.01 : 0;
+  return c.slice().sort((a, b) => gap(a) - gap(b))[0];
+}
+function optItems(o, r) {
+  return ((o && o.cols) || []).map((c, i) => { const txt = r ? String(r[3 + i] == null ? "" : r[3 + i]) : "", q = qv(txt), g = c.u === "ud" ? q * (c.gu || 0) : q, k = g / 100; return { n: c.n, u: c.u || "g", txt, q, g, kcal: k * (c.k || 0), p: k * (c.p || 0), c: k * (c.c || 0), f: k * (c.f || 0) }; });
+}
+const optTot = (o, r) => optItems(o, r).reduce((t, x) => ({ kcal: t.kcal + x.kcal, p: t.p + x.p, c: t.c + x.c, f: t.f + x.f }), { kcal: 0, p: 0, c: 0, f: 0 });
+const planOpts = () => (kinds() || []).reduce((a, k) => a + k.moms.reduce((b, m) => b + m.opts.length, 0), 0);
+/* Qué tipo de día del plan toca: el que haya elegido la persona para ese día o, si no, el que encaje con la competición, el día de la semana o lo que entrena */
+function planKind(date) {
+  const ks = kinds(); if (!ks) return null;
+  const day = S.days[date], own = day && day.kind && ks.find(k => k.id === day.kind); if (own) return { k: own, auto: false };
+  const by = h => ks.find(k => k.h === h), s = planned(date), w = ((day || {}).weight) || S.profile.weight, acts = (day && day.acts) || [];
+  let k = null;
+  if (eventOn(date)) k = ks.find(x => /^comp/.test(x.h));
+  else if (eventOn(addDays(date, 1))) k = by("pre1") || by("pre2");
+  else if (eventOn(addDays(date, 2))) k = by("pre2");
+  if (!k) k = ks.find(x => /^dow/.test(x.h) && x.h.slice(3).includes(String(dow(date))));
+  if (!k) {
+    const kc = acts.length ? acts.reduce((x, a) => x + actKcal(a, w), 0) : s.unset || s.type === "descanso" ? 0 : actKcal({ type: s.type, min: s.min }, w);
+    const mins = acts.length ? acts.reduce((x, a) => x + (a.min || 0), 0) : s.min || 0, met = acts.length ? Math.max(...acts.map(a => (TYPES[a.type] || TYPES.fuerza).met)) : (TYPES[s.type] || TYPES.descanso).met;
+    const hard = kc >= 450 || mins >= 90 || (met >= 9 && mins >= 45);
+    k = kc < 100 ? by("descanso") || by("moderado") : hard ? by("intenso") || by("entreno") || by("moderado") : by("moderado") || by("entreno") || by("intenso");
+  }
+  return { k: k || ks[0], auto: true };
+}
+/* Calorías de un tipo de día: el total que diga el documento o, si no, la suma de sus momentos (con varias opciones, la media y el margen entre la más ligera y la más contundente) */
+function kindTot(k, date) {
+  const kt = k.tot; if (kt && kt.kcal > 0) return { kcal: kt.kcal, p: kt.p || 0, c: kt.c || 0, f: kt.f || 0, macros: (kt.p || 0) + (kt.c || 0) + (kt.f || 0) > 0, lo: kt.kcal, hi: kt.kcal, n: 0, open: false };
+  const t = { kcal: 0, p: 0, c: 0, f: 0, macros: true, lo: 0, hi: 0, n: 0, open: false };
+  (k.moms || []).forEach(m => {
+    const ts = (m.opts || []).map(o => optTot(o, myRow(o, date))).filter(x => x.kcal > 0); if (!ts.length) return;
+    if (ts.length > 1) t.open = true; t.n += ts.length;
+    ["kcal", "p", "c", "f"].forEach(key => { t[key] += ts.reduce((a, x) => a + x[key], 0) / ts.length; });
+    t.lo += Math.min(...ts.map(x => x.kcal)); t.hi += Math.max(...ts.map(x => x.kcal));
+  });
+  return t.kcal > 0 ? t : null;
+}
+/* Totales del plan para un día: los del tipo de día que toque; en un plan a mano, la suma de lo apuntado por comidas o los totales puestos a mano */
+function dietTotals(date) {
   const d = diet(); if (!d) return null;
+  const pk = planKind(date || S.date); if (pk) return kindTot(pk.k, date || S.date);
   const items = SLOTS.flatMap(([k]) => (d.slots && d.slots[k]) || []);
   if (items.length) return items.reduce((t, x) => ({ kcal: t.kcal + (x.kcal || 0), p: t.p + (x.p || 0), c: t.c + (x.c || 0), f: t.f + (x.f || 0), macros: true, n: t.n + 1 }), { kcal: 0, p: 0, c: 0, f: 0, macros: true, n: 0 });
   const m = d.tot; if (!m || !(m.kcal > 0)) return null;
   return { kcal: m.kcal, p: m.p || 0, c: m.c || 0, f: m.f || 0, macros: (m.p || 0) + (m.c || 0) + (m.f || 0) > 0, n: 0 };
 }
 function saveDiet(d) { const p = clone(S.profile); if (d) p.diet = d; else delete p.diet; saveProfile(p); }
+const upLbl = "PDF o foto";
 function rDietCard() {
-  const box = $("#diet-box"); if (!box) return; const t = S.profile ? dietTotals() : null, d = diet();
-  box.innerHTML = t ? `<p><b>${nf(t.kcal)} kcal</b>${t.macros ? ` · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g` : ""}${d.by ? ` <span class="sub">· pautado por ${esc(d.by)}</span>` : ""}</p><p class="sub">En Hoy ves cada día si este plan encaja, se queda corto o te sobra según lo que entrenes.</p><div class="row"><button class="btn ghost" type="button" data-sheet="diet">Ver o cambiar el plan</button>${sample || aiWeb ? `<button class="btn ghost" type="button" data-sheet="diet" data-up="1">Subir otro en ${sample && !sample.web ? "foto" : "PDF o foto"}</button>` : ""}</div>`
-    : `<p class="sub">¿Tienes un plan de comidas pautado por tu nutricionista o dietista? Apúntalo aquí y, con lo que entrenes cada día, te digo si ese plan encaja, se queda corto o te sobra. También podrás apuntar lo pautado con un toque.</p><div class="row">${sample || aiWeb ? `<button class="btn" type="button" data-sheet="diet" data-up="1">Subir mi plan en ${sample && !sample.web ? "foto" : "PDF o foto"}</button><button class="btn ghost" type="button" data-sheet="diet">Apuntarlo a mano</button>` : `<button class="btn" type="button" data-sheet="diet">Añadir mi plan</button>`}</div>`;
+  const box = $("#diet-box"); if (!box) return; const ks = S.profile ? kinds() : null, t = S.profile && !ks ? dietTotals() : null, d = diet();
+  const by = d && d.by ? ` <span class="sub">· pautado por ${esc(d.by)}</span>` : "", up = sample || aiWeb ? `<button class="btn ghost" type="button" data-sheet="diet" data-up="1">Subir otro en ${upLbl}</button>` : "";
+  box.innerHTML = ks ? `<p><b>${ks.length === 1 ? "1 tipo de día" : ks.length + " tipos de día"}</b> · ${nf(planOpts())} opciones${by}</p><p class="sub">En Hoy la app elige el tipo de día según lo que entrenes y te enseña las opciones con tus cantidades, para apuntarlas con un toque.</p><div class="row"><button class="btn ghost" type="button" data-sheet="diet">Ver o cambiar el plan</button>${up}</div>`
+    : t ? `<p><b>${nf(t.kcal)} kcal</b>${t.macros ? ` · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g` : ""}${by}</p><p class="sub">En Hoy ves cada día si este plan encaja, se queda corto o te sobra según lo que entrenes.</p><div class="row"><button class="btn ghost" type="button" data-sheet="diet">Ver o cambiar el plan</button>${up}</div>`
+    : `<p class="sub">¿Tienes un plan de comidas pautado por tu nutricionista o dietista? Súbelo o apúntalo aquí y, con lo que entrenes cada día, te digo si ese plan encaja, se queda corto o te sobra. También podrás apuntar lo pautado con un toque.</p><div class="row">${sample || aiWeb ? `<button class="btn" type="button" data-sheet="diet" data-up="1">Subir mi plan en ${upLbl}</button><button class="btn ghost" type="button" data-sheet="diet">Apuntarlo a mano</button>` : `<button class="btn" type="button" data-sheet="diet">Añadir mi plan</button>`}</div>`;
 }
+/* Una opción del plan con las cantidades de la persona y sus calorías aproximadas */
+function optHtml(o, date, btn) {
+  const it = optItems(o, myRow(o, date)), t = it.reduce((a, x) => ({ kcal: a.kcal + x.kcal, p: a.p + x.p, c: a.c + x.c, f: a.f + x.f }), { kcal: 0, p: 0, c: 0, f: 0 });
+  const list = it.map(x => esc(x.n) + (qShow(x) ? ` <span class="num">${esc(qShow(x))}</span>` : "")).join(" · ");
+  return `<li><div><b>${esc(o.n)}</b>${list ? `<small>${list}</small>` : ""}${t.kcal > 0 ? `<small class="num">≈ ${nf(t.kcal)} kcal · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g</small>` : ""}</div>${btn}</li>`;
+}
+const r10 = v => Math.round(v / 10) * 10;
+const kcalRange = t => t.hi - t.lo > 50 ? nf(r10(t.lo)) + "–" + nf(r10(t.hi)) : nf(r10(t.kcal));
+const openKd = new Set();
+document.addEventListener("toggle", e => { const k = e.target.dataset && e.target.dataset.kd; if (!k) return; if (e.target.open) openKd.add(k); else openKd.delete(k); }, true);
+const dietUp = has => sample ? `<div class="dread"><span class="btn fileb">Subir ${has ? "otro" : "mi"} plan en ${upLbl}<input id="dt-file" type="file" accept="image/*,application/pdf" multiple aria-label="PDF o foto de tu plan de nutrición"></span><p class="sub">La IA lee el documento entero, aunque sea largo y traiga varios tipos de día y varias opciones${has ? " (sustituye al plan que hay)" : ""}. Un PDF largo tarda unos minutos: no cierres la app mientras tanto. Si trae datos personales o de salud que no quieras compartir, recórtalos antes.</p><div id="dt-read" hidden class="col" style="gap:6px;width:100%"><p class="msg" id="dt-rmsg" aria-live="polite"></p><div class="pbar"><i id="dt-bar" style="width:0"></i></div></div></div>`
+  : aiWeb ? `<div class="dread"><button class="btn" type="button" id="dt-need">Subir mi plan en ${upLbl}</button><p class="sub">La IA lee el documento y rellena el plan por ti. Para usarlo tienes que tener abierta tu cuenta de la nube (Perfil → Cuenta en la nube).</p></div>` : "";
+const dietGoal = () => { const g = (diet() || {}).goal || ""; return `<label class="fld">Objetivo de cada día<select id="dt-goal"><option value="" ${g ? "" : "selected"}>Automático</option><option value="plan" ${g === "plan" ? "selected" : ""}>Siempre mi plan pautado</option><option value="app" ${g === "app" ? "selected" : ""}>Siempre el cálculo de la app</option></select></label><p class="sub">En automático, el objetivo del día es tu plan cuando marca un menú cerrado; si deja elegir entre opciones, es el cálculo de la app y el plan te sirve de guía.</p>`; };
+const dietFoot = () => `<label class="fld">Quién te lo ha pautado (opcional)<input id="dt-by" type="text" maxlength="60" value="${esc((diet() || {}).by || "")}" placeholder="Mi nutricionista"></label>
+    <p id="dt-msg" class="msg" aria-live="polite"></p>
+    <div class="row actions"><button class="btn" type="button" data-close>Listo</button>${diet() ? `<button class="btn ghost sm" type="button" id="dt-clear">Quitar el plan</button>` : ""}</div>`;
 function dietSheet() {
+  if (kinds()) { dietSheetK(); return planSay(); }
   const d = diet() || { by: "", slots: {} }, tot = dietTotals(), mt = d.tot || {}, sv = v => v > 0 ? String(v).replace(".", ",") : "";
-  $("#diet-body").innerHTML = `<p class="sub">Apunta lo que te han pautado, comida por comida. Con eso y con lo que entrenes, cada día te digo si el plan encaja, se queda corto o te sobra.</p>` +
-    (sample ? `<div class="dread"><span class="btn fileb">Subir mi plan en ${sample.web ? "PDF o foto" : "foto"}<input id="dt-file" type="file" accept="image/*${sample.web ? ",application/pdf" : ""}" multiple aria-label="PDF o foto de tu plan de nutrición"></span><p class="sub">La IA lee el documento y rellena el plan por ti${diet() ? " (sustituye al que hay)" : ""}. Puedes subir varias fotos a la vez. Si trae datos personales o de salud que no quieras compartir, recórtalos antes.</p></div>`
-      : aiWeb ? `<div class="dread"><button class="btn" type="button" id="dt-need">Subir mi plan en PDF o foto</button><p class="sub">La IA lee el documento y rellena el plan por ti. Para usarlo tienes que tener abierta tu cuenta de la nube (Perfil → Cuenta en la nube).</p></div>` : "") +
+  $("#diet-body").innerHTML = `<p class="sub">Sube tu plan o apunta lo que te han pautado, comida por comida. Con eso y con lo que entrenes, cada día te digo si el plan encaja, se queda corto o te sobra.</p>` + dietUp(!!diet()) +
     SLOTS.map(([k, n]) => {
       const it = (d.slots && d.slots[k]) || [], kc = it.reduce((a, x) => a + (x.kcal || 0), 0);
       return `<div class="dslot"><div class="dslot-h"><b>${n}</b><span class="num sub">${it.length ? nf(kc) + " kcal" : ""}</span><button class="btn ghost sm" type="button" data-add-slot="${k}" data-mode="plan">+ Añadir</button></div>${it.length ? `<ul class="meals">${it.map(m => `<li><span>${esc(m.name)}${m.g ? ` <span class="num" style="color:var(--muted)">${qtyTxt(m.g, m.u)}</span>` : ""}</span><span class="kc num">${nf(m.kcal)}</span><span></span><button class="icon-btn" type="button" data-del-diet="${esc(m.id)}" aria-label="Quitar ${esc(m.name)}">×</button><small class="num">P ${nf(m.p)} · H ${nf(m.c)} · G ${nf(m.f)} g</small></li>`).join("")}</ul>` : ""}</div>`;
     }).join("") +
     (tot && tot.n ? `<p class="dtot num">Total del plan: <b>${nf(tot.kcal)} kcal</b> · P ${nf(tot.p)} · H ${nf(tot.c)} · G ${nf(tot.f)} g</p>`
       : `<details class="how" ${mt.kcal > 0 ? "open" : ""}><summary>No tengo el detalle: poner solo los totales del día</summary><div class="four" style="padding-top:10px"><label class="fld">Kcal<input id="dt-kcal" type="text" inputmode="decimal" value="${sv(mt.kcal)}"></label><label class="fld">Proteína (g)<input id="dt-p" type="text" inputmode="decimal" value="${sv(mt.p)}"></label><label class="fld">Hidratos (g)<input id="dt-c" type="text" inputmode="decimal" value="${sv(mt.c)}"></label><label class="fld">Grasa (g)<input id="dt-f" type="text" inputmode="decimal" value="${sv(mt.f)}"></label></div><div class="row actions" style="padding-top:10px"><button class="btn ghost sm" type="button" id="dt-save">Guardar totales</button></div></details>`) +
-    `<label class="fld">Quién te lo ha pautado (opcional)<input id="dt-by" type="text" maxlength="60" value="${esc(d.by || "")}" placeholder="Mi nutricionista"></label>
-    <p id="dt-msg" class="msg" aria-live="polite"></p>
-    <div class="row actions"><button class="btn" type="button" data-close>Listo</button>${diet() ? `<button class="btn ghost sm" type="button" id="dt-clear">Quitar el plan</button>` : ""}</div>`;
+    (tot ? dietGoal() : "") + dietFoot();
+  planSay();
 }
-/* El plan pautado se puede leer de fotos, capturas o (en la web) de un PDF: la IA lo pasa a comidas con sus cantidades y macros */
-let dietPrev;
+/* Vista de un plan leído de un documento: tipos de día, momentos y opciones con las cantidades de la persona */
+function dietSheetK() {
+  const d = diet(), ks = kinds(), date = S.date, sx = S.profile.sex === "f" ? "f" : "m", rws = {}; let first = null;
+  ks.forEach(k => k.moms.forEach(m => m.opts.forEach(o => (o.rows || []).forEach(r => { if ((r[1] || r[2]) && (!r[0] || r[0] === sx)) { rws[rowKey(r)] = [r[1] || 0, rowLbl(["", r[1], r[2]])]; first = first || o; } }))));
+  const rk = Object.keys(rws).sort((a, b) => rws[a][0] - rws[b][0]), auto = first ? rowLbl(["", ...myRow(first, date, true).slice(1, 3)]) : "";
+  $("#diet-body").innerHTML = `<p class="sub">Plan leído de tu documento: ${ks.length === 1 ? "1 tipo de día" : ks.length + " tipos de día"} y ${nf(planOpts())} opciones. En Hoy eliges la opción que has comido y se apunta sola con tus cantidades. Las calorías son aproximadas: las calcula la IA a partir de las cantidades.</p>` + dietUp(true) +
+    (rk.length > 1 ? `<label class="fld">Mis cantidades<select id="dt-row"><option value="">Automático, según mi peso${auto ? " (" + esc(auto) + ")" : ""}</option>${rk.map(k => `<option value="${k}" ${d.row === k ? "selected" : ""}>${esc(rws[k][1])}</option>`).join("")}</select></label>` : "") +
+    ks.map(k => { const t = kindTot(k, date), n = k.moms.reduce((a, m) => a + m.opts.length, 0);
+      return `<details class="how kd" data-kd="${esc(k.id)}" ${openKd.has(k.id) ? "open" : ""}><summary><b>${esc(k.n)}</b><span class="sub num">${n === 1 ? "1 opción" : n + " opciones"}${t ? " · ≈ " + kcalRange(t) + " kcal al día" : ""}</span></summary>${k.notes && k.notes.length ? `<ul class="pnotes" style="padding-top:8px">${k.notes.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${k.moms.map(m => `<div class="dslot" style="margin-top:10px"><div class="dslot-h"><b>${esc(m.n)}</b></div><ul class="popts">${m.opts.map(o => optHtml(o, date, `<button class="icon-btn" type="button" data-del-opt="${esc(o.id)}" aria-label="Quitar ${esc(o.n)}">×</button>`)).join("")}</ul></div>`).join("")}</details>`; }).join("") +
+    (d.notes && d.notes.length ? `<details class="how kd"><summary><b>Pautas generales</b></summary><ul class="pnotes" style="padding-top:8px">${d.notes.map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : "") +
+    dietGoal() + dietFoot();
+}
+/* Hoja para elegir, de lo pautado para ese momento, lo que se ha comido */
+function poptSheet(slot) {
+  const pk = planKind(S.date); if (!pk) return; const moms = pk.k.moms.filter(m => m.s === slot), sn = (SLOTS.find(x => x[0] === slot) || [])[1] || "";
+  const any = moms.flatMap(m => m.opts).find(o => (o.rows || []).some(r => r[1] || r[2] || r[0])), rl = any ? rowLbl(myRow(any, S.date)) : "";
+  $("#sh-popt-t").textContent = "Tu plan: " + sn.toLowerCase();
+  $("#popt-body").innerHTML = `<p class="sub"><b>${esc(pk.k.n)}</b>${rl ? " · cantidades para " + esc(rl) : ""}. Toca lo que has comido y se apunta; luego puedes corregir cualquier cantidad.</p>` +
+    moms.map(m => `<div class="dslot">${moms.length > 1 ? `<div class="dslot-h"><b>${esc(m.n)}</b></div>` : ""}<ul class="popts">${m.opts.map(o => optHtml(o, S.date, `<button class="btn ghost sm" type="button" data-log-opt="${esc(o.id)}">Apuntar</button>`)).join("")}</ul></div>`).join("") +
+    `<div class="row actions"><button class="btn ghost" type="button" data-close>Cerrar</button></div>`;
+}
+
+/* ---------- Leer el plan de un documento: PDF de cualquier tamaño, fotos o capturas ---------- */
+/* El PDF se abre en el propio navegador con pdf.js: cada página se pasa a imagen y, si el PDF trae su texto, se acompaña para no bailar cifras. Quien lo lee e interpreta es la IA, por tandas de páginas. */
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/", PLAN_MAXP = 120, PLAN_B = 4;
+const codeErr = code => Object.assign(new Error(code), { code });
+let pdfLib = null;
+function pdfLoad() {
+  return pdfLib || (pdfLib = new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = PDFJS + "pdf.min.js";
+    s.onload = () => { const L = window.pdfjsLib; if (!L) { pdfLib = null; return rej(codeErr("pdf_lib")); } L.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; res(L); };
+    s.onerror = () => { pdfLib = null; s.remove(); rej(codeErr("pdf_lib")); };
+    document.head.appendChild(s);
+  }));
+}
+async function pdfOpen(file) {
+  const L = await pdfLoad(); let doc;
+  try { doc = await L.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise; } catch (e) { throw codeErr("pdf_bad"); }
+  return { n: doc.numPages, close: () => { try { doc.destroy(); } catch (e) { /* ya cerrado */ } },
+    async page(i) {
+      const pg = await doc.getPage(i), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: 1568 / Math.max(v0.width, v0.height) });
+      const c = document.createElement("canvas"); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+      const cx = c.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, c.width, c.height);
+      await pg.render({ canvasContext: cx, viewport: vp }).promise;
+      const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.9)); let text = "";
+      try { // el texto propio del PDF, por líneas de arriba abajo; hay PDF que lo traen letra a letra, así que se junta por la separación real entre trozos
+        const hor = {}, ver = [], join = (list, sep) => { let out = "", end = null; list.forEach(([pos, str, len, h]) => { const gap = end == null ? 0 : pos - end; out += (end == null || gap < 0.18 * h ? "" : gap > 1.6 * h ? sep : " ") + str; end = pos + len; }); return out.replace(/ +/g, " ").trim(); };
+        (await pg.getTextContent()).items.forEach(it => { const str = it.str || "", m = it.transform; if (!str.trim() && !(it.width > 0)) return; const h = Math.hypot(m[2], m[3]) || it.height || 10;
+          if (Math.abs(m[1]) > Math.abs(m[0])) ver.push([m[5], str, it.width || 0, h]); // texto girado (títulos en vertical)
+          else { const y = Math.round(m[5] / (h * 0.5)); (hor[y + ":" + Math.round(h)] = hor[y + ":" + Math.round(h)] || { y: m[5], l: [] }).l.push([m[4], str, it.width || 0, h]); } });
+        const lines = Object.values(hor).sort((a, b) => b.y - a.y).map(x => join(x.l.sort((a, b) => a[0] - b[0]), " | ")).filter(Boolean);
+        const side = join(ver.sort((a, b) => a[0] - b[0]), " ");
+        text = ((side ? "Título en vertical: " + side + "\n" : "") + lines.join("\n")).slice(0, 3000);
+      } catch (e) { /* sin texto: vale con la imagen */ }
+      c.width = c.height = 0; try { pg.cleanup(); } catch (e) { /* nada */ }
+      if (!blob) throw codeErr("pdf_bad");
+      return { blob, text };
+    } };
+}
+function planPrompt(batch, parts, N) {
+  const a = batch[0].pg, b = batch[batch.length - 1].pg;
+  return `Eres el lector de planes de nutrición de una app. Te paso ${batch.length === 1 ? `la página ${a}` : `las páginas ${a} a ${b}`} de ${N} de un plan de alimentación que un profesional ha pautado. Las imágenes van en orden: ${batch.map((u, i) => `la ${i + 1}.ª es la página ${u.pg}`).join(", ")}.` +
+    `\nPasa a datos TODA la comida pautada que aparezca, sin resumir y sin saltarte opciones ni filas. Devuelve solo un objeto JSON, sin más texto: {"by": "", "blocks": [], "notes": [], "tots": []}` +
+    `\n"blocks": un elemento por cada OPCIÓN de cada comida:` +
+    `\n{"pg": página, "kind": "tipo de día al que pertenece, tal como lo titula el documento y sin emojis (ejemplos: Días intensos, Días de descanso, 48 h antes, Competición por la mañana, Lunes, Día de recarga); cadena vacía si esa página no lo dice", "slot": "${SLOTS.map(x => x[0]).join("|")}", "mom": "momento tal como viene (Desayuno, Pre-entreno, Post-entreno, Cena…)", "opt": "nombre corto del plato u opción", "cols": [{"n": "alimento", "u": "g|ml|ud", "gu": 0, "k": 0, "p": 0, "c": 0, "f": 0}], "rows": [["f|m|", 0, 0, "cantidad del alimento 1", "cantidad del alimento 2"]]}` +
+    `\n- slot: ${SLOTS.map(x => x[0] + " = " + x[1].toLowerCase()).join(", ")}. Lo de antes, durante o después de entrenar o competir va en ent.` +
+    `\n- cols: los alimentos de la opción, en el orden de la tabla. u es la unidad en que viene la cantidad: g, ml o ud (piezas, unidades, latas, rebanadas, tortitas). gu = gramos de una unidad cuando u es ud (0 en otro caso). k, p, c y f = kcal, proteína, hidratos y grasa por 100 g o por 100 ml del alimento tal como se pesa (crudo si dice crudo). Si el documento no da esos valores, estímalos con tablas de composición habituales.` +
+    `\n- rows: una fila por cada fila de la tabla. Primero el sexo (f = mujer, m = hombre, cadena vacía si no distingue), luego peso mínimo y máximo del tramo en kg (para «+70 kg» pon 70 y 0; si no distingue peso, 0 y 0) y después la cantidad de cada alimento en el mismo orden que cols, como texto y solo el número o el rango, en la unidad de su columna: "40", "2-3", "0.5". Si pone «al gusto», "0".` +
+    `\n- En muchas tablas el sexo viene como un icono (mujer u hombre) que no sale en el texto: míralo en la imagen. Si la tabla tiene 6 filas con los tramos de peso repetidos, lo normal es que las primeras sean de mujer y las últimas de hombre.\n- Si la opción no trae tabla sino una lista de alimentos con cantidad, pon una sola fila ["", 0, 0, …]. Si no trae cantidades, esa única fila lleva cadenas vacías.` +
+    `\n- Si una página es solo la portada de un apartado (por ejemplo «Días de descanso»), añade a blocks {"pg": página, "sec": "ese título"}.` +
+    `\n"notes": pautas útiles que no son comidas (hidratación, reglas del tipo de día, suplementación): [{"pg": página, "kind": "tipo de día o cadena vacía", "t": "una frase corta"}]. Como mucho 5 por página y nada de publicidad ni de marcas.` +
+    `\n"tots": solo si el documento dice el total del día: [{"kind": "tipo de día o cadena vacía", "kcal": 0, "p": 0, "c": 0, "f": 0}].` +
+    `\n"by": nombre del profesional o del centro si aparece; si no, cadena vacía. No copies datos personales ni de salud de la persona.` +
+    `\nSi en estas páginas no hay nada de un plan de alimentación, devuelve {"by": "", "blocks": [], "notes": [], "tots": []}. Si no se pueden leer, {"error": "motivo breve"}.` +
+    parts.map((p, i) => p.text ? `\n\nTexto de la página ${batch[i].pg} (sacado del propio PDF; fíate de él para las cifras y de la imagen para saber qué va con qué):\n${p.text}` : "").join("");
+}
+/* Lee todas las páginas por tandas: la primera sola (ahí se pide el permiso de la IA) y el resto de tres en tres. Si una respuesta llega cortada, la tanda se parte en dos. */
+async function readPlan(files, prog) {
+  const isPdf = f => f.type === "application/pdf" || /\.pdf$/i.test(f.name || "");
+  if (files.some(f => !isPdf(f) && !/^image\//.test(f.type))) throw codeErr("file_type");
+  if (!canImg) throw codeErr("images_unavailable");
+  const units = [], docs = [], out = [], failed = []; let stop = "", done = 0;
+  try {
+    for (const f of files) {
+      if (!isPdf(f)) { units.push({ get: async () => ({ blob: f, text: "" }) }); continue; }
+      if (f.size > 80e6) throw codeErr("pdf_big");
+      const doc = await pdfOpen(f); docs.push(doc);
+      for (let i = 1; i <= doc.n; i++) units.push({ get: () => doc.page(i) });
+    }
+    const N = units.length; if (!N) throw codeErr("pdf_bad"); if (N > PLAN_MAXP) throw codeErr("too_long");
+    units.forEach((u, i) => { u.pg = i + 1; });
+    const queue = []; for (let i = 0; i < N; i += PLAN_B) queue.push(units.slice(i, i + PLAN_B));
+    const tick = n => { done += n; prog(N > 1 ? `Leyendo tu plan: ${done} de ${N} páginas…` : "Leyendo tu plan…", 4 + 96 * done / N); };
+    const run = async batch => {
+      if (stop) { failed.push(...batch); return tick(batch.length); }
+      let parts; try { parts = []; for (const u of batch) parts.push(await u.get()); } catch (e) { failed.push(...batch); return tick(batch.length); }
+      const prompt = planPrompt(batch, parts, N);
+      for (let n = 0; ; n++) {
+        try { const r = await sample.json(prompt, { images: parts.map(p => p.blob), max: 4000, px: 1568 }); if (r) out.push(r); return tick(batch.length); }
+        catch (e) {
+          const c = e && e.code;
+          if (c === "invalid_json" && batch.length > 1) { const h = Math.ceil(batch.length / 2); await run(batch.slice(0, h)); return run(batch.slice(h)); }
+          if (!stop && n < 1 && !["rate_limited", "session_expired", "need_ok", "cancelled", "image_rejected"].concat(AIOFF).includes(c)) { await new Promise(r => setTimeout(r, 2500)); continue; }
+          if (["rate_limited", "session_expired", "need_ok", "cancelled"].concat(AIOFF).includes(c)) stop = stop || c;
+          failed.push(...batch); return tick(batch.length);
+        }
+      }
+    };
+    prog(N > 1 ? `Leyendo tu plan: ${N} páginas…` : "Leyendo tu plan…", 4);
+    await run(queue.shift());
+    await Promise.all([0, 1, 2].map(async () => { while (queue.length) await run(queue.shift()); }));
+    return { res: out, failed: failed.map(u => u.pg).sort((a, b) => a - b), stop, N };
+  } finally { docs.forEach(d => d.close()); }
+}
+/* Junta lo leído en todas las tandas: arrastra el tipo de día de una página a las siguientes y agrupa por tipo de día y momento */
+function mergePlan(res) {
+  const blocks = [], notes = [], tots = [], gen = []; let by = "", err = "";
+  res.forEach(r => { if (!r) return; if (r.by && !by) by = String(r.by).slice(0, 60); if (r.error && !err) err = String(r.error).slice(0, 200);
+    (Array.isArray(r.blocks) ? r.blocks : []).forEach(b => { if (b && typeof b === "object") blocks.push(b); }); (Array.isArray(r.notes) ? r.notes : []).forEach(n => { if (n && n.t) notes.push(n); }); (Array.isArray(r.tots) ? r.tots : []).forEach(t => { if (t && typeof t === "object") tots.push(t); }); });
+  const pg = x => Number(x.pg) || 0, clean = (v, n) => String(v || "").replace(/[^\p{L}\p{N} +\-–().,/%:'ºª]/gu, " ").replace(/\s+/g, " ").trim().slice(0, n);
+  blocks.forEach((b, i) => { b.i = i; }); blocks.sort((a, b) => pg(a) - pg(b) || a.i - b.i);
+  const at = []; let cur = "";
+  blocks.forEach(b => { if (b.sec) cur = clean(b.sec, 40); else if (clean(b.kind, 40)) cur = clean(b.kind, 40); else b.kind = cur; at.push([pg(b), cur]); });
+  const kindAt = p => { let k = ""; for (const [q, c] of at) { if (q <= p) k = c; else break; } return k; };
+  const ks = [], byKey = {}, num = (v, max) => { v = Number(v); return v > 0 && isFinite(v) ? Math.min(max, Math.round(v * 10) / 10) : 0; };
+  const kindOf = (label, make) => { label = clean(label, 40) || "Todos los días"; const h = kindKey(label); if (!byKey[h] && make && ks.length < 16) { byKey[h] = { id: "k" + ks.length + uidGen(), n: label, h, moms: [], notes: [] }; ks.push(byKey[h]); } return byKey[h] || null; };
+  let n = 0;
+  blocks.forEach(b => {
+    if (b.sec || n >= 400) return;
+    const cols = (Array.isArray(b.cols) ? b.cols : []).filter(c => c && clean(c.n, 50)).slice(0, 8).map(c => ({ n: clean(c.n, 50), u: c.u === "ml" || c.u === "ud" ? c.u : "g", gu: c.u === "ud" ? num(c.gu, 2000) : 0, k: num(c.k, 900), p: num(c.p, 100), c: num(c.c, 100), f: num(c.f, 100) }));
+    const name = clean(b.opt, 90) || cols.map(c => c.n).join(" + ").slice(0, 90); if (!name) return;
+    const rows = (Array.isArray(b.rows) ? b.rows : []).filter(Array.isArray).slice(0, 12).map(r => [r[0] === "f" || r[0] === "m" ? r[0] : "", num(r[1], 300), num(r[2], 300)].concat(cols.map((c, i) => String(r[3 + i] == null ? "" : r[3 + i]).replace(/[–—]/g, "-").replace(/,/g, ".").replace(/[^\d.\-\/ ]/g, "").trim().slice(0, 12))));
+    const k = kindOf(b.kind, true); if (!k) return;
+    const slot = SLOTS.some(x => x[0] === b.slot) ? b.slot : "com", mk = momKey(slot, b.mom);
+    let m = k.moms.find(x => x.key === mk); if (!m) { m = { key: mk, s: slot, n: clean(b.mom, 40) || SLOTS.find(x => x[0] === slot)[1], opts: [] }; k.moms.push(m); }
+    m.opts.push({ id: "o" + n + uidGen(), n: name, cols, rows }); n++;
+  });
+  notes.forEach(x => { const t = clean(x.t, 220); if (!t) return; const lab = clean(x.kind, 40) || kindAt(pg(x)), k = lab ? kindOf(lab, false) : null, list = k ? k.notes : gen; if (list.length < 12 && !list.includes(t)) list.push(t); });
+  tots.forEach(t => { const kc = Number(t.kcal); if (!(kc >= 500 && kc <= 8000)) return; const k = clean(t.kind, 40) ? kindOf(t.kind, false) : ks.length === 1 ? ks[0] : null; if (k) k.tot = { kcal: Math.round(kc), p: Math.round(num(t.p, 600)), c: Math.round(num(t.c, 1500)), f: Math.round(num(t.f, 600)) }; });
+  return { kinds: ks, by, n, notes: gen, err };
+}
+const pgList = a => { const out = []; for (let i = 0; i < a.length; i++) { let j = i; while (j + 1 < a.length && a[j + 1] === a[j] + 1) j++; out.push(j > i ? a[i] + "–" + a[j] : String(a[i])); i = j; } return yList(out); };
+let dietPrev, planJob = null;
+function planSay() { const j = planJob, box = $("#dt-read"); if (!box) return; box.hidden = !j; if (j) { $("#dt-rmsg").textContent = j.txt; $("#dt-bar").style.width = Math.min(100, j.pct).toFixed(0) + "%"; } document.querySelectorAll("#dt-file").forEach(i => { i.disabled = !!j; }); }
 document.addEventListener("change", async e => {
   if (e.target.id !== "dt-file") return;
-  const files = [...(e.target.files || [])].slice(0, 4); e.target.value = ""; if (!files.length || !sample || !S.profile) return;
-  const say = (t, err) => { const m = $("#dt-msg"); if (m) { m.textContent = t; m.className = "msg" + (err ? " err" : ""); m.scrollIntoView({ block: "nearest" }); } };
-  let opts; try { opts = aiFiles(files); } catch (err) { return say(AIERR[err.code] || "No puedo usar ese archivo.", true); }
-  say("Leyendo tu plan… puede tardar hasta un minuto."); document.querySelectorAll("#dt-file").forEach(i => { i.disabled = true; });
-  const prompt = `Lee el plan de nutrición que aparece en ${opts.docs ? "el documento" : files.length > 1 ? "las imágenes" : "la imagen"}. Es el plan que un profesional le ha pautado a una persona. Pásalo a datos.` +
-    `\n- Reparte los alimentos por momento del día: ${SLOTS.map(x => x[0] + " = " + x[1].toLowerCase()).join(", ")}.` +
-    `\n- Por cada alimento o plato: nombre corto en español, cantidad en gramos, o en mililitros si es una bebida o un líquido (si viene en unidades, cucharadas, tazas, vasos o rebanadas, conviértelo de forma aproximada), kcal, proteína, hidratos y grasa. Si el plan no da calorías o macros, estímalos tú a partir de la cantidad.` +
-    `\n- Si el plan da varias opciones para una misma comida, o menús distintos según el día, coge SOLO la primera opción o el primer día completo y dilo en "nota".` +
-    `\n- Si el documento dice el total del día (kcal y macros), ponlo en "tot"; si no, "tot": null.` +
-    `\n- No copies datos personales ni de salud que aparezcan en el documento.` +
-    `\nResponde solo con un objeto JSON, sin más texto: {"by": "nombre del profesional o del centro si aparece, o cadena vacía", "slots": {${SLOTS.map(x => `"${x[0]}": [{"name": "…", "g": 0, "u": "g o ml", "kcal": 0, "p": 0, "c": 0, "f": 0}]`).join(", ")}}, "tot": {"kcal": 0, "p": 0, "c": 0, "f": 0}, "nota": "una frase con lo que has supuesto"}.` +
-    `\nSi no es un plan de alimentación o no se puede leer, responde {"error": "motivo breve"}.`;
+  const files = [...(e.target.files || [])].slice(0, 12); e.target.value = ""; if (!files.length || !sample || !S.profile || planJob) return;
+  const say = (t, err) => { const m = $("#dt-msg"); if (m) { m.textContent = t; m.className = "msg" + (err ? " err" : ""); if (t) m.scrollIntoView({ block: "nearest" }); } };
+  const prog = (txt, pct) => { planJob = { txt, pct: pct || 0 }; planSay(); }, end = () => { planJob = null; planSay(); };
+  let wl = null; try { wl = navigator.wakeLock ? await navigator.wakeLock.request("screen") : null; } catch (x) { /* sin bloqueo de pantalla: sigue igual */ }
+  say(""); prog("Abriendo el documento…", 2);
   try {
-    const r = await sample.json(prompt, opts), n = v => { v = Number(v); return v > 0 && isFinite(v) ? Math.round(v * 10) / 10 : 0; };
-    if (!r || r.error || typeof r.slots !== "object" && !r.tot) { dietSheet(); return say((r && r.error) ? String(r.error).slice(0, 200) : "No he visto un plan de nutrición ahí. Prueba con una foto más nítida.", true); }
-    const d = { by: String(r.by || (diet() || {}).by || "").slice(0, 60), slots: {} }; let items = 0, kcal = 0;
-    SLOTS.forEach(([k]) => { const list = (Array.isArray((r.slots || {})[k]) ? r.slots[k] : []).filter(x => x && x.name && Number(x.kcal) >= 0 && Number(x.kcal) <= 3000).slice(0, 15).map(x => Object.assign({ id: uidGen(), name: String(x.name).slice(0, 80), g: Math.min(n(x.g), 3000), kcal: Math.round(n(x.kcal)), p: n(x.p), c: n(x.c), f: n(x.f) }, x.u === "ml" && n(x.g) > 0 ? { u: "ml" } : {})); if (list.length) { d.slots[k] = list; items += list.length; kcal += list.reduce((a, x) => a + x.kcal, 0); } });
-    const t = r.tot || {}; if (!items && Number(t.kcal) >= 500 && Number(t.kcal) <= 8000) d.tot = { kcal: Math.round(n(t.kcal)), p: Math.round(n(t.p)), c: Math.round(n(t.c)), f: Math.round(n(t.f)) };
-    if (!items && !d.tot) { dietSheet(); return say("He leído el documento, pero no he encontrado comidas ni totales que apuntar.", true); }
-    dietPrev = diet() ? clone(diet()) : null; saveDiet(d); dietSheet();
-    say((items ? `Plan leído: ${items} alimentos en ${Object.keys(d.slots).length} comidas, ${nf(kcal)} kcal. ` : `Plan leído: ${nf(d.tot.kcal)} kcal al día. `) + (r.nota ? String(r.nota).slice(0, 220) + " " : "") + "Revísalo y corrige lo que no cuadre.");
-    $("#dt-msg").insertAdjacentHTML("beforeend", ` <button class="btn ghost sm" type="button" id="dt-undo">Deshacer</button>`);
+    const out = await readPlan(files, prog), plan = mergePlan(out.res); end();
+    if (AIOFF.includes(out.stop)) { sample = null; canImg = false; showAi(); dietSheet(); }
+    if (!plan.n) return say(AIOFF.includes(out.stop) ? "La ayuda de IA no está disponible ahora. Puedes apuntar el plan a mano." : AIERR[out.stop] || plan.err || (out.failed.length ? "No he podido leer el documento. Inténtalo otra vez." : "No he visto un plan de nutrición ahí. Prueba con otro archivo o con una foto más nítida."), true);
+    const old = diet(), d = { by: (plan.by || (old || {}).by || "").slice(0, 60), slots: {}, kinds: plan.kinds }; if (plan.notes.length) d.notes = plan.notes; if (old && old.goal) d.goal = old.goal;
+    dietPrev = old ? clone(old) : null; saveDiet(d); const open = $("#sh-diet").open; if (open) dietSheet(); else toast("Plan leído. Lo tienes en Perfil y en Hoy.");
+    const miss = out.failed.length ? ` No he podido leer ${out.failed.length === 1 ? "la página" : "las páginas"} ${pgList(out.failed)}${out.stop === "rate_limited" ? " porque has llegado al límite de usos de la IA por hoy" : ""}: lo que haya ahí no está en el plan.` : "";
+    say(`Plan leído: ${plan.kinds.length === 1 ? "1 tipo de día" : plan.kinds.length + " tipos de día"} y ${plan.n === 1 ? "1 opción" : plan.n + " opciones"}.${miss} Repásalo aquí abajo y quita lo que no cuadre.`);
+    const m = $("#dt-msg"); if (m) m.insertAdjacentHTML("beforeend", ` <button class="btn ghost sm" type="button" id="dt-undo">Deshacer</button>`);
   } catch (err) {
-    dietSheet(); const c = err && err.code;
+    end(); const c = err && err.code;
     if (AIOFF.includes(c)) { sample = null; canImg = false; showAi(); dietSheet(); }
-    say(AIOFF.includes(c) ? "La ayuda de IA no está disponible ahora. Puedes apuntar el plan a mano." : AIERR[c] || "Ha fallado la conexión. Inténtalo otra vez.", true);
-  }
+    say(AIOFF.includes(c) ? "La ayuda de IA no está disponible ahora. Puedes apuntar el plan a mano." : AIERR[c] || "No he podido leer ese documento. Inténtalo otra vez.", true);
+  } finally { if (wl) { try { wl.release(); } catch (x) { /* ya suelto */ } } }
 });
 document.addEventListener("click", e => { if (e.target.id !== "dt-need") return; const m = $("#dt-msg"); if (m) { m.textContent = AIMSG.calc; m.className = "msg err"; m.scrollIntoView({ block: "nearest" }); } });
 document.addEventListener("click", e => { if (e.target.id !== "dt-undo" || !S.profile) return; saveDiet(dietPrev || null); dietSheet(); const m = $("#dt-msg"); if (m) m.textContent = "Deshecho: el plan vuelve a estar como antes."; });
+document.addEventListener("change", e => {
+  const t = e.target; if (!S.profile || !diet()) return;
+  if (t.id === "dt-row" || t.id === "dt-goal") { const d = clone(diet()), k = t.id === "dt-row" ? "row" : "goal"; if (t.value) d[k] = t.value; else delete d[k]; saveDiet(d); dietSheet(); }
+  if (t.dataset && t.dataset.kindSel) { const d = getDay(t.dataset.kindSel); if (t.value) d.kind = t.value; else delete d.kind; saveDay(d); }
+});
 document.addEventListener("change", e => { if (e.target.id !== "dt-by" || !S.profile) return; const d = clone(diet() || { by: "", slots: {} }); d.by = e.target.value.trim().slice(0, 60); saveDiet(d); });
 document.addEventListener("click", e => {
   const t = e.target.closest("#dt-save,#dt-clear"); if (!t || !S.profile) return;
@@ -1889,7 +2153,7 @@ $("#rem-form").addEventListener("submit", e => {
   msg.textContent = ""; closeSheets(); toast("Recordatorio guardado. Añádelo a tu calendario desde Perfil.");
 });
 /* ---------- IA: comida por texto o foto, captura de Strava, ideas ---------- */
-const AIERR = { rate_limited: "Demasiadas peticiones seguidas. Prueba dentro de un rato.", session_expired: "Tu sesión ha caducado. Vuelve a entrar y repite.", image_rejected: "No puedo usar esa imagen. Prueba con otra en JPG o PNG.", need_ok: "Para usar la IA hace falta que aceptes el aviso.", file_type: "Ese tipo de archivo no vale. Usa una foto o captura (JPG, PNG) o un PDF.", pdf_native: "Dentro de Claude solo puedo leer fotos y capturas. Haz una captura del PDF, o súbelo desde la web de Elitepro con tu cuenta.", too_big: "El archivo pesa demasiado: como mucho 4 MB por PDF.", busy: "La IA está saturada ahora mismo. Prueba en un minuto.", refused: "Eso no se ha podido analizar.", invalid_json: "No he entendido la respuesta. Inténtalo otra vez.", empty_completion: "No ha salido respuesta. Describe la comida con más detalle.", images_unavailable: "Aquí no se pueden enviar fotos." };
+const AIERR = { rate_limited: "Demasiadas peticiones seguidas. Prueba dentro de un rato.", session_expired: "Tu sesión ha caducado. Vuelve a entrar y repite.", image_rejected: "No puedo usar esa imagen. Prueba con otra en JPG o PNG.", need_ok: "Para usar la IA hace falta que aceptes el aviso.", file_type: "Ese tipo de archivo no vale. Usa una foto o captura (JPG, PNG) o un PDF.", pdf_native: "Dentro de Claude solo puedo leer fotos y capturas. Haz una captura del PDF, o súbelo desde la web de Elitepro con tu cuenta.", too_big: "El archivo pesa demasiado: como mucho 4 MB por PDF.", busy: "La IA está saturada ahora mismo. Prueba en un minuto.", refused: "Eso no se ha podido analizar.", invalid_json: "No he entendido la respuesta. Inténtalo otra vez.", empty_completion: "No ha salido respuesta. Describe la comida con más detalle.", images_unavailable: "Aquí no se pueden enviar fotos.", pdf_lib: "No he podido abrir el lector de PDF. Comprueba la conexión e inténtalo otra vez, o sube capturas del plan.", pdf_bad: "Ese PDF no se puede abrir. Si está protegido con contraseña, quítasela o sube capturas.", pdf_big: "Ese PDF pesa demasiado: como mucho 80 MB.", too_long: "El documento tiene demasiadas páginas: como mucho 120. Sube solo las del plan de comidas." };
 const AIMSG = { photo: "Leer fotos solo funciona en la app publicada, abierta dentro de Claude. Aquí apúntalo a mano o elige de la lista.", calc: "Calcular con IA solo funciona en la app abierta dentro de Claude. Aquí apúntalo a mano o búscalo en la lista." };
 const AIOFF = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"];
 function aiFail(e, msgEl) {
@@ -1957,7 +2221,7 @@ $("#a-shot").addEventListener("change", async e => {
 
 async function idea() {
   const out = $("#idea-out"), btn = $("#idea-btn"); if (!out || !sample) return;
-  const d = S.date, t = target(d), tot = totals(d), s = planned(d), acts = (S.days[d] || {}).acts || [];
+  const d = S.date, t = goal(d), tot = totals(d), s = planned(d), acts = (S.days[d] || {}).acts || [];
   out.hidden = false; out.textContent = "Pensando…"; btn.disabled = true;
   const hour = new Date().getHours();
   const prompt = `Eres dietista deportivo. Propón qué comer ahora a una persona en España, en español y con tuteo.` +
@@ -1987,15 +2251,16 @@ function rAi() {
   box.scrollTop = box.scrollHeight; $("#ai-tips").hidden = aiLog.length > 0; $("#ai-send").disabled = aiBusy; $("#ai-photo").accept = sample && sample.web ? "image/*,application/pdf" : "image/*";
 }
 function aiContext() {
-  const p = S.profile, d = today(), now = new Date(), t = target(d), tot = totals(d), day = S.days[d] || {}, s = planned(d), slotN = k => (SLOTS.find(x => x[0] === k) || [])[1] || k;
+  const p = S.profile, d = today(), now = new Date(), t = goal(d), pk = planKind(d), tot = totals(d), day = S.days[d] || {}, s = planned(d), slotN = k => (SLOTS.find(x => x[0] === k) || [])[1] || k;
   const actTxt = a => ((TYPES[a.type] || {}).n || a.type) + (a.min ? " " + Math.round(a.min) + " min" : "") + (a.km ? " " + nf(a.km, 1) + " km" : "");
-  const past = [1, 2, 3, 4, 5, 6].map(i => { const k = addDays(d, -i), x = S.days[k]; return x && ((x.meals || []).length || (x.acts || []).length) ? `${k}: ${Math.round(totals(k).kcal)} de ${Math.round(target(k).kcal)} kcal; entrenos: ${(x.acts || []).map(actTxt).join(", ") || "ninguno"}` : ""; }).filter(Boolean);
+  const past = [1, 2, 3, 4, 5, 6].map(i => { const k = addDays(d, -i), x = S.days[k]; return x && ((x.meals || []).length || (x.acts || []).length) ? `${k}: ${Math.round(totals(k).kcal)} de ${Math.round(goal(k).kcal)} kcal; entrenos: ${(x.acts || []).map(actTxt).join(", ") || "ninguno"}` : ""; }).filter(Boolean);
   const mine = myFoods().slice(-30).map(f => `${f.name}${f.g ? " (" + qtyTxt(f.g, f.u) + ")" : " (1 ración)"}: ${f.kcal} kcal, P ${f.p}, H ${f.c}, G ${f.f}`);
   return `\nHoy es ${d} (${DOW[dow(d)]}) y son las ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}.` +
     `\nPersona: ${p.sex === "f" ? "mujer" : "hombre"}, ${p.age} años, ${p.height} cm, ${nf((day.weight || p.weight), 1)} kg. Objetivo: ${(GOALS[p.goal] || GOALS.mant).n}.` +
-    `\nObjetivo de hoy: ${Math.round(t.kcal)} kcal, ${Math.round(t.prot)} g de proteína, ${Math.round(t.carb)} g de hidratos, ${Math.round(t.fat)} g de grasa. Lleva: ${Math.round(tot.kcal)} kcal, P ${Math.round(tot.p)}, H ${Math.round(tot.c)}, G ${Math.round(tot.f)}.` +
+    `\nObjetivo de hoy${t.plan ? ` (es el de su plan pautado; el cálculo de la app daría unas ${r10(t.est.kcal)} kcal, que es una estimación con un 10-15 % de margen: no la des como exacta ni le digas que cambie su plan por ella)` : " (estimación de la app, con un 10-15 % de margen)"}: ${Math.round(t.kcal)} kcal, ${Math.round(t.prot)} g de proteína, ${Math.round(t.carb)} g de hidratos, ${Math.round(t.fat)} g de grasa. Lleva: ${Math.round(tot.kcal)} kcal, P ${Math.round(tot.p)}, H ${Math.round(tot.c)}, G ${Math.round(tot.f)}.` +
     `\nComidas apuntadas hoy: ${(day.meals || []).map(m => slotN(m.slot) + ": " + m.name + (m.g ? " " + qtyTxt(m.g, m.u) : "") + " (" + m.kcal + " kcal)").join("; ") || "ninguna"}.` +
     `\nSesión prevista hoy: ${s.unset ? "sin planificar" : (TYPES[s.type] || {}).n + (s.min ? " " + s.min + " min" : "")}. Entrenos apuntados hoy: ${(day.acts || []).map(actTxt).join("; ") || "ninguno"}.` +
+    (pk ? `\nPlan pautado: hoy le toca «${pk.k.n}». Opciones: ${pk.k.moms.map(m => m.n + ": " + m.opts.map(o => o.n).join(" | ")).join("; ").slice(0, 1200)}.` : "") +
     (past.length ? `\nDías anteriores:\n${past.join("\n")}` : "") +
     (mine.length ? `\nPlatos que tiene guardados (si nombra uno, usa estos valores):\n${mine.join("\n")}` : "");
 }
@@ -2272,7 +2537,7 @@ function setSession(date, patch) {
 }
 document.addEventListener("click", e => {
   if (e.target.matches && e.target.matches("dialog.sheet")) { e.target.close(); return; }
-  const x = e.target.closest("[data-add-slot],[data-log-plan],[data-del-diet],[data-del-rem],[data-rem-defaults]");
+  const x = e.target.closest("[data-add-slot],[data-log-plan],[data-plan-slot],[data-log-opt],[data-del-opt],[data-del-diet],[data-del-rem],[data-rem-defaults]");
   if (x && S.profile) {
     e.preventDefault(); // el «+» va dentro de un desplegable: que no lo abra ni lo cierre
     if (x.dataset.addSlot) return openMeal(null, x.dataset.addSlot, x.dataset.mode);
@@ -2280,6 +2545,18 @@ document.addEventListener("click", e => {
       const k = x.dataset.logPlan, items = ((diet() || {}).slots || {})[k] || [], d = getDay(S.date);
       items.forEach(m => d.meals.push({ id: uidGen(), slot: k, name: m.name, g: m.g || 0, kcal: m.kcal || 0, p: m.p || 0, c: m.c || 0, f: m.f || 0, az: 0, fi: 0, ia: false }));
       openSlots.add(k); saveDay(d); return toast("Apuntado lo pautado.");
+    }
+    if (x.dataset.planSlot) { poptSheet(x.dataset.planSlot); return openSheet("popt"); }
+    if (x.dataset.logOpt) {
+      let o = null, slot = ""; (kinds() || []).forEach(k => k.moms.forEach(m => m.opts.forEach(y => { if (y.id === x.dataset.logOpt) { o = y; slot = m.s; } }))); if (!o) return;
+      const it = optItems(o, myRow(o, S.date)).filter(i => i.q > 0 && (i.g > 0 || i.kcal > 0)), d = getDay(S.date), r1 = v => Math.round(v * 10) / 10;
+      if (!it.length) { closeSheets(); openMeal(null, slot); $("#f-name").value = o.n.slice(0, 80); return toast("Ese plato no trae cantidades: ponlas tú" + (sample ? " o calcúlalo con IA." : ".")); }
+      it.forEach(i => d.meals.push(Object.assign({ id: uidGen(), slot, name: (i.u === "ud" ? `${i.n} (${i.txt.replace(/-/g, "–")} ud)` : i.n).slice(0, 80), g: Math.round(i.g), kcal: Math.round(i.kcal), p: r1(i.p), c: r1(i.c), f: r1(i.f), az: 0, fi: 0, ia: false }, i.u === "ml" ? { u: "ml" } : {})));
+      openSlots.add(slot); closeSheets(); saveDay(d); return toast("Apuntado: " + o.n + ".");
+    }
+    if (x.dataset.delOpt) {
+      const dp = clone(diet()); dp.kinds.forEach(k => { k.moms.forEach(m => { m.opts = m.opts.filter(y => y.id !== x.dataset.delOpt); }); k.moms = k.moms.filter(m => m.opts.length); });
+      dp.kinds = dp.kinds.filter(k => k.moms.length); if (!dp.kinds.length) delete dp.kinds; saveDiet(dp); return dietSheet();
     }
     if (x.dataset.delDiet) { const dp = clone(diet() || { slots: {} }); Object.keys(dp.slots || {}).forEach(k => { dp.slots[k] = dp.slots[k].filter(m => m.id !== x.dataset.delDiet); if (!dp.slots[k].length) delete dp.slots[k]; }); saveDiet(dp); return dietSheet(); }
     if (x.dataset.delRem) return saveRems(rems().filter(r => r.id !== x.dataset.delRem));

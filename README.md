@@ -40,7 +40,8 @@ Los formularios (comida, entreno, peso, glucosa, competición, entreno previsto)
 - **Buscar al escribir**: en «Qué has comido» salen sugerencias de una lista de más de 300 alimentos y platos (sin tildes, con las palabras en cualquier orden). Al elegir una se rellenan la ración y los macros.
 - **Sólidos en gramos, líquidos en mililitros**: la cantidad lleva unidad (g, ml o l). Al elegir una bebida o un líquido pasa sola a ml; a partir de 1 l se enseña en litros. En los datos, `u: "ml"` en una comida dice que `g` son mililitros.
 - **Mis platos** (`profile.foods`): lo que se apunta a mano y no está en la lista se recuerda (casilla marcada por defecto) y la próxima vez sale al buscarlo, marcado como «Tuyo». Varias cosas de un mismo momento del día se pueden guardar juntas como un plato. Se quitan desde «Buscar en la lista».
-- **Plan pautado desde un documento**: en «Tu plan pautado», «Leer mi plan de una foto o un PDF» manda el archivo al modelo, que lo pasa a comidas con cantidades y macros (con «Deshacer»). Fotos y capturas en todas partes; PDF solo en la web, donde va tal cual como documento, sin OCR.
+- **Plan pautado desde un documento**: en «Tu plan pautado», «Subir mi plan en PDF o foto». El PDF se abre en el propio navegador con pdf.js (va en `vendor/pdfjs`, sin pedirlo a terceros): cada página se pasa a imagen y, si el PDF trae texto, se acompaña. La IA lo lee por tandas de 4 páginas (hasta 120 páginas; si una respuesta llega cortada, la tanda se parte en dos) y lo deja por **tipos de día** (intenso, descanso, 48 h antes, competición, días de la semana…), con sus momentos, sus opciones y la tabla de cantidades por sexo y peso. En Hoy la app elige el tipo de día según el entreno y las competiciones, enseña las opciones con las cantidades de la persona y se apuntan con un toque. Con «Deshacer».
+- **Objetivo del día con plan pautado**: si el plan marca un menú cerrado, el objetivo del día es el plan y el cálculo de la app se enseña como estimación con su margen (10–15 %); si el plan deja elegir entre opciones, o suma menos que el gasto en reposo, el objetivo sigue siendo el cálculo de la app. Se cambia en «Ver o cambiar el plan».
 - **Asistente** (`sample`): se le escribe o se le manda una foto y apunta comidas y entrenos (con «Deshacer»), y contesta dudas del día con el contexto de la semana. Dentro de Claude usa la IA de quien abre la app; en la web pasa por el servidor (operación `ai`) con la clave de la API de Anthropic guardada allí. No recibe datos de salud y la conversación no se guarda.
 
 ## Entrenos desde el reloj
@@ -91,6 +92,7 @@ En `pruebas/`, con Node y Playwright:
 - `node pruebas/version.test.mjs /tmp/ep`: actualización automática.
 - `node pruebas/nube2.test.mjs /tmp/ep`: casos límite (guardados en curso, volver a entrar, empezar de cero, cambio de contraseña).
 - `node pruebas/ia.test.mjs /tmp/ep`: buscador de alimentos, «mis platos» e IA fuera de Claude (foto, calcular y asistente) con una imitación de la API.
+- `node pruebas/plan2.test.mjs /tmp/ep`: plan pautado leído de un PDF largo (tandas, respuesta cortada, páginas que fallan), tipos de día, opciones, cantidades por sexo y peso y objetivo del día.
 - `node pruebas/clave.test.mjs /tmp/ep`: botón de ver la contraseña y «He olvidado la contraseña» (código por correo, con y sin la llave en el dispositivo).
 
 ## Modo salud

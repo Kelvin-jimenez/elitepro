@@ -27,6 +27,8 @@ class Sheet {
   }
 }
 const sheets = {}, props = {}, cache = {}, stats = { slept: 0, busy: false, mail: [], ai: [] }, delay = { op: '', ms: 0 };
+// Respuestas de la IA según las páginas que pida leer («la página 5», «las páginas 5 a 8»): /__ai?map={"1-4": "...", "5": "...", "*": "..."}
+const aiByPage = body => { if (!stats.aiMap) return ''; const t = JSON.stringify(body || ''), m = t.match(/las p\u00e1ginas (\d+) a (\d+)|las páginas (\d+) a (\d+)/), o = t.match(/la p(?:\\u00e1|á)gina (\d+) de/); const k = m ? (m[1] || m[3]) + '-' + (m[2] || m[4]) : o ? o[1] : ''; return stats.aiMap[k] ?? stats.aiMap['*'] ?? ''; };
 const ctx = {
   SpreadsheetApp: { flush() {}, getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = new Sheet(n)) }), openById: () => { throw new Error('sin permiso'); }, getUi() { throw new Error('sin interfaz'); } },
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; } }) },
@@ -39,7 +41,7 @@ const ctx = {
     getUuid: () => crypto.randomUUID(), sleep: ms => { stats.slept += ms; },
     formatDate: d => new Date(d.getTime() + 2 * 3600000).toISOString().slice(0, 16).replace('T', ' ')
   },
-  UrlFetchApp: { fetch: (url, o) => { const body = o && o.payload ? JSON.parse(o.payload) : null; stats.ai.push({ url, key: o && o.headers && o.headers['x-api-key'], body }); return { getResponseCode: () => stats.aiCode || 200, getContentText: () => stats.aiCode && stats.aiCode !== 200 ? '{"type":"error"}' : JSON.stringify({ content: [{ type: 'text', text: stats.aiText || '{"name":"Plato de prueba","g":300,"kcal":450,"p":30,"c":50,"f":12,"az":5,"fi":4,"nota":"prueba"}' }] }) }; } },
+  UrlFetchApp: { fetch: (url, o) => { const body = o && o.payload ? JSON.parse(o.payload) : null; stats.ai.push({ url, key: o && o.headers && o.headers['x-api-key'], body }); return { getResponseCode: () => stats.aiCode || 200, getContentText: () => stats.aiCode && stats.aiCode !== 200 ? '{"type":"error"}' : JSON.stringify({ content: [{ type: 'text', text: aiByPage(body) || stats.aiText || '{"name":"Plato de prueba","g":300,"kcal":450,"p":30,"c":50,"f":12,"az":5,"fi":4,"nota":"prueba"}' }] }) }; } },
   MailApp: { sendEmail: (to, subject, body) => { if (stats.nomail) throw new Error('cuota'); stats.mail.push({ to, subject, body }); } },
   ContentService: { MimeType: { JSON: 'json' }, createTextOutput: s => ({ s, setMimeType() { return this; } }) },
   Logger: { log() {} }, console
@@ -52,7 +54,7 @@ http.createServer((req, res) => {
   if (u.pathname === '/__delay') { delay.op = u.searchParams.get('op') || ''; delay.ms = Number(u.searchParams.get('ms') || 0); res.end('ok'); return; }
   if (u.pathname === '/__setup') { res.end(ctx.prepararElitepro()); return; }
   if (u.pathname === '/__dump') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ sheets: Object.fromEntries(Object.entries(sheets).map(([k, v]) => [k, v.rows])), props, stats })); return; }
-  if (u.pathname === '/__ai') { const q = u.searchParams; if (q.has('key')) { if (q.get('key')) props.ai_key = q.get('key'); else delete props.ai_key; } if (q.has('text')) stats.aiText = q.get('text'); if (q.has('code')) stats.aiCode = Number(q.get('code')); if (q.has('max')) props.ai_max_user = q.get('max'); res.end('ok'); return; }
+  if (u.pathname === '/__ai') { const q = u.searchParams; if (q.has('key')) { if (q.get('key')) props.ai_key = q.get('key'); else delete props.ai_key; } if (q.has('text')) stats.aiText = q.get('text'); if (q.has('code')) stats.aiCode = Number(q.get('code')); if (q.has('max')) props.ai_max_user = q.get('max'); if (q.has('map')) stats.aiMap = q.get('map') ? JSON.parse(q.get('map')) : null; res.end('ok'); return; }
   if (u.pathname === '/__busy') { stats.busy = u.searchParams.get('on') === '1'; res.end('ok'); return; }
   if (u.pathname === '/__clearcache') { Object.keys(cache).forEach(k => delete cache[k]); res.end('ok'); return; }
   const f = path.join(root, u.pathname === '/' ? 'index.html' : decodeURIComponent(u.pathname));

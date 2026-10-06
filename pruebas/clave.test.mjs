@@ -75,7 +75,7 @@ try {
   bb = await local(B); ok('…y en el dispositivo no se pierde nada (2 comidas y la salud sigue aquí)', meals(bb) === 2 && bb.profile.health.cond === 'dm2');
   ok('el código no queda guardado en la hoja', !/"reset"/.test(JSON.stringify(d.sheets.usuarios)));
   await C.click('#reload'); await C.waitForTimeout(500); await C.click('[data-see]'); await C.waitForSelector('#detail table', { timeout: 20000 });
-  ok('el entrenador sigue pudiendo leer la cuenta (las 2 comidas, sin salud)', /2026-10-05\s*478/.test(await T(C, '#detail')) && /No ha dado consentimiento/.test(await T(C, '#detail')), (await T(C, '#detail')).slice(150, 900));
+  ok('el entrenador sigue pudiendo leer la cuenta (las 2 comidas, sin salud)', /\d{4}-\d{2}-\d{2}\s*478/.test(await T(C, '#detail')) && /No ha dado consentimiento/.test(await T(C, '#detail')), (await T(C, '#detail')).slice(150, 900));
   // el primer dispositivo tenía la sesión antigua: caduca, vuelve a entrar con la nueva y no pisa nada
   await go(A, '#datos'); await A.click('[data-cl="sync"]'); await A.waitForTimeout(1500); ok('el otro dispositivo tiene que volver a entrar', /caducada/i.test(await T(A, '#cl-chip')), await T(A, '#cl-chip'));
   await login(A, 'marco@ejemplo.com', 'tercera-clave-marco', '#cloud-card [data-cl="login"]'); const a = await local(A); d = await dump();
