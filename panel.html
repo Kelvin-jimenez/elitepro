@@ -139,7 +139,7 @@ const EPC = (() => {
     for (let i = 0; ; i++) {
       try { return await once(url, body, ms || 40000); }
       catch (e) {
-        const again = e.code === "ocupado" || ((e.code === "red" || e.code === "lento") && SAFE.includes(body.op));
+        const again = e.code === "ocupado" || ((e.code === "red" || e.code === "lento" || e.code === "raro") && SAFE.includes(body.op)); // «raro»: Google devolvió una página de error en vez de la respuesta
         if (!again || i >= waits.length) throw e;
         await new Promise(r => setTimeout(r, waits[i]));
       }
