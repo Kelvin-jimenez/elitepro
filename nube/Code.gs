@@ -308,6 +308,20 @@ function autorizarPermisos() {
 }
 
 /**
+ * Ejecuta esta función desde el editor para comprobar que la clave de la IA funciona: hace una pregunta mínima
+ * (cuesta una fracción de céntimo) y escribe el resultado en el registro. No cambia nada.
+ */
+function probarIA() {
+  var p = props_(), key = p.getProperty("ai_key"), model = p.getProperty("ai_model") || AI_MODEL;
+  if (!key) { Logger.log("Falta la clave (propiedad ai_key)."); return; }
+  var res = UrlFetchApp.fetch("https://api.anthropic.com/v1/messages", { method: "post", contentType: "application/json", headers: { "x-api-key": key, "anthropic-version": "2023-06-01" },
+    payload: JSON.stringify({ model: model, max_tokens: 30, messages: [{ role: "user", content: "Responde solo con la palabra: funciona" }] }), muteHttpExceptions: true });
+  var code = res.getResponseCode(), out = null; try { out = JSON.parse(res.getContentText()); } catch (err) { out = null; }
+  Logger.log(code === 200 && out && out.content ? "La IA contesta (" + model + "): " + out.content[0].text
+    : "La IA NO contesta. Código " + code + ": " + (out && out.error ? out.error.type + " · " + out.error.message : "sin detalle"));
+}
+
+/**
  * Ejecuta esta función UNA vez desde el editor (botón Ejecutar): crea las pestañas y un código de
  * puesta en marcha de un solo uso, que se escribe en el registro de ejecución. Si olvidas la
  * contraseña de entrenador, vuelve a ejecutarla para obtener un código nuevo y repetir la puesta en marcha.
