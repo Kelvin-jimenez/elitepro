@@ -240,6 +240,7 @@ $("#cl-form").addEventListener("submit", async e => {
 /* ---------- IA fuera de Claude: con la sesión abierta, la foto del plato, «Calcular con IA» y el asistente pasan por el servidor de Elitepro,
    que guarda la clave de la API. No se envían datos de salud. La primera vez se pide aceptar un aviso. ---------- */
 AIMSG.photo = AIMSG.calc = "Para usar la IA entra en tu cuenta: Perfil → Cuenta en la nube.";
+aiWeb = true;
 document.querySelectorAll("#sh-meal .only").forEach(el => { el.textContent = "Con tu cuenta en la nube"; });
 document.body.insertAdjacentHTML("beforeend", `<dialog id="ai-ok" class="sheet" aria-labelledby="ai-ok-t" style="z-index:50"><div class="sheet-in">
   <div class="sheet-head"><h2 id="ai-ok-t">Antes de usar la IA</h2></div>

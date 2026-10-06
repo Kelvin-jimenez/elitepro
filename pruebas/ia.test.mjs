@@ -80,6 +80,9 @@ try {
   // ---- IA: sin cuenta no hay; con cuenta y clave en el servidor, sí
   await go(A, '#hoy'); ok('sin cuenta: no hay asistente y la IA pide entrar', !(await A.isVisible('.aibar')));
   await A.click('#nut-card [data-sheet="meal"]'); await A.waitForTimeout(200); await A.click('#f-ai'); ok('…«Calcular con IA» dice que hace falta la cuenta', /entra en tu cuenta/.test(await T(A, '#f-msg')) && /Con tu cuenta en la nube/.test(await T(A, '#f-choices')), await T(A, '#f-msg')); await A.keyboard.press('Escape');
+  await go(A, '#datos'); ok('sin cuenta: Perfil ya ofrece subir el plan en PDF o foto', /Subir mi plan en PDF o foto/.test(await T(A, '#diet-box')) && /Apuntarlo a mano/.test(await T(A, '#diet-box')));
+  await A.click('#diet-box [data-up]'); await A.waitForTimeout(300);
+  ok('…y al pulsarlo explica que hace falta la cuenta', /entra en tu cuenta/.test(await T(A, '#dt-msg')) && await A.isVisible('#dt-need'), await T(A, '#dt-msg')); await A.keyboard.press('Escape'); await A.waitForTimeout(200);
   await ai('key=sk-prueba-9');
   await go(A, '#datos'); await A.click('#cloud-card [data-cl="register"]'); await A.waitForTimeout(200); await A.fill('#cl-email', 'tania@ejemplo.com'); await A.fill('#cl-pass', 'clave-de-tania-1'); await A.fill('#cl-pass2', 'clave-de-tania-1'); await A.fill('#cl-inv', codes[0]); await A.check('#cl-terms'); await A.check('#cl-hc'); await A.click('#cl-go'); await closed(A); await settle(A, 700);
   await go(A, '#hoy'); ok('con la cuenta abierta aparece el asistente', await A.isVisible('.aibar'));
@@ -118,7 +121,7 @@ try {
   const pdf = dir + '/_plan.pdf', txt = dir + '/_nota.txt'; fs.writeFileSync(pdf, '%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF'); fs.writeFileSync(txt, 'hola');
   await ai('text=' + encodeURIComponent(JSON.stringify({ by: 'Clara', slots: { des: [{ name: 'Avena con leche', g: 300, kcal: 350, p: 15, c: 50, f: 9 }, { name: 'Plátano', g: 120, kcal: 107, p: 1, c: 27, f: 0 }], com: [{ name: 'Pollo con arroz', g: 350, kcal: 520, p: 40, c: 60, f: 12 }], cen: [{ name: 'Mal', kcal: 99999 }] }, tot: null, nota: 'He cogido la opción 1 de cada comida.' })));
   await go(A, '#datos'); await A.click('#diet-box [data-sheet="diet"]'); await A.waitForTimeout(300);
-  ok('el plan ofrece leerse de una foto o un PDF', /Leer mi plan de una foto o un PDF/.test(await T(A, '#diet-body')) && /pdf/.test(await A.getAttribute('#dt-file', 'accept')));
+  ok('el plan ofrece subirse en PDF o foto', /Subir mi plan en PDF o foto/.test(await T(A, '#diet-body')) && /pdf/.test(await A.getAttribute('#dt-file', 'accept')));
   await A.setInputFiles('#dt-file', txt); await A.waitForTimeout(300); ok('un archivo que no es foto ni PDF se rechaza sin enviarlo', /tipo de archivo no vale/.test(await T(A, '#dt-msg')));
   let n0 = (await sent()).length; await A.setInputFiles('#dt-file', png); await A.waitForFunction(() => /Plan leído/.test((document.querySelector('#dt-msg') || {}).textContent || ''), null, { timeout: 30000 }); L = await local(A);
   ok('de una foto: la IA rellena el plan por comidas (3 alimentos, 977 kcal) y descarta lo imposible', L.profile.diet && L.profile.diet.slots.des.length === 2 && L.profile.diet.slots.com[0].name === 'Pollo con arroz' && !L.profile.diet.slots.cen && L.profile.diet.by === 'Clara' && /3 alimentos en 2 comidas, 977 kcal/.test(await T(A, '#dt-msg')) && /opción 1/.test(await T(A, '#dt-msg')), await T(A, '#dt-msg'));

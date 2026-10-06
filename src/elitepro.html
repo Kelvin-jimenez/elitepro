@@ -984,7 +984,7 @@ function keepFood(rec) {
 
 /* ---------- Estado y guardado ---------- */
 const S = { mode: "loading", profile: null, days: {}, date: today(), week: monday(today()), tab: "hoy", got: { p: false, d: false } };
-let db = null, profRef = null, daysCol = null, sample = null, canImg = false;
+let db = null, profRef = null, daysCol = null, sample = null, canImg = false, aiWeb = false; // aiWeb: versión web, donde la IA se enciende al entrar en la cuenta
 const W = {}; // cola de escritura: una a la vez por documento
 const LS = "platoypista:v1";
 
@@ -1793,13 +1793,14 @@ function dietTotals() {
 function saveDiet(d) { const p = clone(S.profile); if (d) p.diet = d; else delete p.diet; saveProfile(p); }
 function rDietCard() {
   const box = $("#diet-box"); if (!box) return; const t = S.profile ? dietTotals() : null, d = diet();
-  box.innerHTML = t ? `<p><b>${nf(t.kcal)} kcal</b>${t.macros ? ` · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g` : ""}${d.by ? ` <span class="sub">· pautado por ${esc(d.by)}</span>` : ""}</p><p class="sub">En Hoy ves cada día si este plan encaja, se queda corto o te sobra según lo que entrenes.</p><div class="row"><button class="btn ghost" type="button" data-sheet="diet">Ver o cambiar el plan</button></div>`
-    : `<p class="sub">¿Tienes un plan de comidas pautado por tu nutricionista o dietista? Apúntalo aquí y, con lo que entrenes cada día, te digo si ese plan encaja, se queda corto o te sobra. También podrás apuntar lo pautado con un toque.</p><div class="row"><button class="btn" type="button" data-sheet="diet">Añadir mi plan</button></div>`;
+  box.innerHTML = t ? `<p><b>${nf(t.kcal)} kcal</b>${t.macros ? ` · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g` : ""}${d.by ? ` <span class="sub">· pautado por ${esc(d.by)}</span>` : ""}</p><p class="sub">En Hoy ves cada día si este plan encaja, se queda corto o te sobra según lo que entrenes.</p><div class="row"><button class="btn ghost" type="button" data-sheet="diet">Ver o cambiar el plan</button>${sample || aiWeb ? `<button class="btn ghost" type="button" data-sheet="diet" data-up="1">Subir otro en ${sample && !sample.web ? "foto" : "PDF o foto"}</button>` : ""}</div>`
+    : `<p class="sub">¿Tienes un plan de comidas pautado por tu nutricionista o dietista? Apúntalo aquí y, con lo que entrenes cada día, te digo si ese plan encaja, se queda corto o te sobra. También podrás apuntar lo pautado con un toque.</p><div class="row">${sample || aiWeb ? `<button class="btn" type="button" data-sheet="diet" data-up="1">Subir mi plan en ${sample && !sample.web ? "foto" : "PDF o foto"}</button><button class="btn ghost" type="button" data-sheet="diet">Apuntarlo a mano</button>` : `<button class="btn" type="button" data-sheet="diet">Añadir mi plan</button>`}</div>`;
 }
 function dietSheet() {
   const d = diet() || { by: "", slots: {} }, tot = dietTotals(), mt = d.tot || {}, sv = v => v > 0 ? String(v).replace(".", ",") : "";
   $("#diet-body").innerHTML = `<p class="sub">Apunta lo que te han pautado, comida por comida. Con eso y con lo que entrenes, cada día te digo si el plan encaja, se queda corto o te sobra.</p>` +
-    (sample ? `<div class="dread"><span class="btn fileb">Leer mi plan de una foto${sample.web ? " o un PDF" : ""}<input id="dt-file" type="file" accept="image/*${sample.web ? ",application/pdf" : ""}" multiple aria-label="Foto o PDF de tu plan de nutrición"></span><p class="sub">La IA lee el documento y rellena el plan por ti${diet() ? " (sustituye al que hay)" : ""}. Si trae datos personales o de salud que no quieras compartir, recórtalos antes.</p></div>` : "") +
+    (sample ? `<div class="dread"><span class="btn fileb">Subir mi plan en ${sample.web ? "PDF o foto" : "foto"}<input id="dt-file" type="file" accept="image/*${sample.web ? ",application/pdf" : ""}" multiple aria-label="PDF o foto de tu plan de nutrición"></span><p class="sub">La IA lee el documento y rellena el plan por ti${diet() ? " (sustituye al que hay)" : ""}. Puedes subir varias fotos a la vez. Si trae datos personales o de salud que no quieras compartir, recórtalos antes.</p></div>`
+      : aiWeb ? `<div class="dread"><button class="btn" type="button" id="dt-need">Subir mi plan en PDF o foto</button><p class="sub">La IA lee el documento y rellena el plan por ti. Para usarlo tienes que tener abierta tu cuenta de la nube (Perfil → Cuenta en la nube).</p></div>` : "") +
     SLOTS.map(([k, n]) => {
       const it = (d.slots && d.slots[k]) || [], kc = it.reduce((a, x) => a + (x.kcal || 0), 0);
       return `<div class="dslot"><div class="dslot-h"><b>${n}</b><span class="num sub">${it.length ? nf(kc) + " kcal" : ""}</span><button class="btn ghost sm" type="button" data-add-slot="${k}" data-mode="plan">+ Añadir</button></div>${it.length ? `<ul class="meals">${it.map(m => `<li><span>${esc(m.name)}${m.g ? ` <span class="num" style="color:var(--muted)">${qtyTxt(m.g, m.u)}</span>` : ""}</span><span class="kc num">${nf(m.kcal)}</span><span></span><button class="icon-btn" type="button" data-del-diet="${esc(m.id)}" aria-label="Quitar ${esc(m.name)}">×</button><small class="num">P ${nf(m.p)} · H ${nf(m.c)} · G ${nf(m.f)} g</small></li>`).join("")}</ul>` : ""}</div>`;
@@ -1842,6 +1843,7 @@ document.addEventListener("change", async e => {
     say(AIOFF.includes(c) ? "La ayuda de IA no está disponible ahora. Puedes apuntar el plan a mano." : AIERR[c] || "Ha fallado la conexión. Inténtalo otra vez.", true);
   }
 });
+document.addEventListener("click", e => { if (e.target.id !== "dt-need") return; const m = $("#dt-msg"); if (m) { m.textContent = AIMSG.calc; m.className = "msg err"; m.scrollIntoView({ block: "nearest" }); } });
 document.addEventListener("click", e => { if (e.target.id !== "dt-undo" || !S.profile) return; saveDiet(dietPrev || null); dietSheet(); const m = $("#dt-msg"); if (m) m.textContent = "Deshecho: el plan vuelve a estar como antes."; });
 document.addEventListener("change", e => { if (e.target.id !== "dt-by" || !S.profile) return; const d = clone(diet() || { by: "", slots: {} }); d.by = e.target.value.trim().slice(0, 60); saveDiet(d); });
 document.addEventListener("click", e => {
@@ -1907,7 +1909,7 @@ function aiFiles(files) {
   const o = {}; if (imgs.length) o.images = imgs.length === 1 ? imgs[0] : imgs; if (pdfs.length) o.docs = pdfs.slice(0, 2); if (sample && sample.web) o.max = 3000;
   return o;
 }
-function showAi() { $("#sh-meal").classList.toggle("noai", !sample); document.querySelectorAll(".ai").forEach(el => { el.hidden = !sample; }); document.querySelectorAll(".ai-img").forEach(el => { el.hidden = !(sample && canImg); }); }
+function showAi() { $("#sh-meal").classList.toggle("noai", !sample); document.querySelectorAll(".ai").forEach(el => { el.hidden = !sample; }); document.querySelectorAll(".ai-img").forEach(el => { el.hidden = !(sample && canImg); }); rDietCard(); }
 async function estimateMeal(file) {
   mealFields(true);
   const msg = $("#f-msg"), text = $("#f-name").value.trim(), g = num($("#f-g").value);
@@ -2299,6 +2301,7 @@ document.addEventListener("click", e => {
     if (n === "act") { $("#a-msg").textContent = ""; $("#a-msg").className = "msg"; if (!["#a-min", "#a-km", "#a-kcal", "#a-hr"].some(i => $(i).value)) $("#a-type").value = plannedOr($("#a-type").value); actFields(true); }
     openSheet(n);
     if (t.dataset.gpx) $("#a-gpx").click();
+    if (t.dataset.up) { const f = $("#dt-file") || $("#dt-need"); if (f) f.click(); } // abre ya el selector de archivo (o avisa de que hace falta la cuenta)
     return;
   }
   if (t.id === "idea-btn") return void idea();
