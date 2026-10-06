@@ -8,7 +8,7 @@ Al guardar datos de otras personas en tu Drive pasas a ser el **responsable del 
 |---|---|
 | Informar con claridad (arts. 13 RGPD) | Política de privacidad pública (`privacidad.html`), enlazada antes de crear la cuenta. |
 | Consentimiento (art. 6.1.a) | Casilla obligatoria, sin marcar por defecto, al crear la cuenta. |
-| Consentimiento explícito para salud (art. 9.2.a) | Casilla aparte y opcional. Sin ella, la condición, los límites del médico, la glucosa y las lesiones no salen del dispositivo. |
+| Consentimiento explícito para salud (art. 9.2.a) | Casilla aparte y opcional. Sin ella, la condición, los límites del médico, la glucosa, las lesiones y cómo dice que se encuentra cada día no salen del dispositivo. |
 | Poder demostrar el consentimiento (art. 7.1) | En la hoja queda, por usuario, la versión de la política, la fecha y si consintió los datos de salud. |
 | Retirar el consentimiento tan fácil como darlo (art. 7.3) | Casilla de salud en Perfil y botón «Borrar mi cuenta». |
 | Acceso y portabilidad (arts. 15 y 20) | «Descargar copia» en Perfil. |

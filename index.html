@@ -209,6 +209,21 @@ dl.kv .over dd{color:var(--crit)}
 #diet-card{grid-column:1 / -1}
 .dslot{border-top:1px solid var(--line);padding-top:10px}
 .dslot-h{display:flex;align-items:center;gap:10px}.dslot-h b{flex:1 1 auto}
+.guide-card{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;border-color:color-mix(in srgb,var(--mark) 35%,var(--line))}
+.ghi{font-family:var(--f-display);font-weight:700;font-size:clamp(1.35rem,2.6vw,1.8rem);line-height:1.12;text-wrap:balance}
+.gq{font-weight:600;font-size:1.05rem}
+.gfeel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}@media(min-width:720px){.gfeel{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.gsteps2{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.gsteps2 li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.gsteps2 li>i{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-style:normal;font-size:.8rem;font-weight:700}
+.gsteps2 li.done>i{background:var(--good);border-color:var(--good);color:#06120a}.gsteps2 li.done b{color:var(--ink-2)}
+.gsteps2 li.next>i{border-color:var(--mark)}.gsteps2 li.next b{color:var(--ink)}
+.gsteps2 small{color:var(--muted);font-size:.86rem}.gsteps2 .gbtn{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:560px){.gsteps2 li{grid-template-columns:26px minmax(0,1fr)}.gsteps2 .gbtn{grid-column:2;justify-content:flex-start}.gsteps2 .gbtn:empty{display:none}}
+.guide-card .msg:empty{display:none}
+.gsteps{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.gdays{display:flex;gap:6px;flex-wrap:wrap}.gdays .btn{min-width:44px}
+.linkchip{cursor:pointer;font-family:inherit}
 .popts{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
 .popts li{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .popts li>div{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -419,6 +434,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
     <section id="v-hoy" class="view" hidden>
       <div id="d-nav" class="pagehead"></div>
       <button class="aibar ai" type="button" data-sheet="ai" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg><span><b>Asistente</b> · cuéntame qué has comido o entrenado y lo apunto</span></button>
+      <div id="guide-card" class="card guide-card" hidden></div>
       <div class="dash">
         <div id="d-label" class="card hero-card"></div>
         <div id="d-macros"></div>
@@ -790,6 +806,14 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
   <p class="sub">Orientación general. No sustituye a tu médico ni ajusta medicación.</p>
 </div></dialog>
 
+<dialog class="sheet" id="sh-start" aria-labelledby="sh-start-t"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="sh-start-t">¿Cómo entrenas?</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div id="start-body" class="col" style="gap:14px"></div>
+</div></dialog>
+<dialog class="sheet" id="sh-sess" aria-labelledby="sh-sess-t"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="sh-sess-t">La sesión</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div id="sess-body" class="col" style="gap:12px"></div>
+</div></dialog>
 <dialog class="sheet" id="sh-popt" aria-labelledby="sh-popt-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-popt-t">Tu plan</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div id="popt-body" class="col" style="gap:12px"></div>
@@ -1137,6 +1161,7 @@ const daysTo = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
 const planned = date => {
   const d = S.days[date]; if (d && d.session) return d.session;
   const ev = eventOn(date); if (ev) return { type: "competicion", min: ev.min || (ev.km > 0 ? Math.round(ev.km * 5.5) : 75) };
+  if (S.profile.mode === "guia" && S.profile.guide) { const g = guideOf(date); return g ? { type: g.type, min: g.min, title: g.title, g: g.key } : { type: "descanso", min: 0 }; }
   if (S.profile.plan && S.profile.plan !== "fija") return { type: "descanso", min: 0, unset: true };
   return S.profile.week[dow(date)] || { type: "descanso", min: 0 };
 };
@@ -1290,6 +1315,7 @@ function rHoy() {
   $("#d-nav").innerHTML = `<div class="hello"><p class="hi">${isToday ? hi + (S.profile.name ? ", " + esc(S.profile.name) : "") : "Estás viendo otro día"}</p><h1>${esc(fecha)}</h1></div>
     <div class="nav-btns"><button class="round" type="button" data-go="-1" aria-label="Día anterior">‹</button>${isToday ? "" : `<button class="btn ghost sm" type="button" data-go="0">Ir a hoy</button>`}<button class="round" type="button" data-go="1" aria-label="Día siguiente">›</button></div>`;
 
+  rGuide();
   /* --- objetivo del día: anillo y cifras --- */
   const rem = t.kcal - tot.kcal, over = rem < -0.05 * t.kcal, pct = t.kcal > 0 ? tot.kcal / t.kcal * 100 : 0;
   const exLabel = t.real ? "entreno hecho" : (s.type === "descanso" ? "sin entreno" : "entreno previsto");
@@ -1313,15 +1339,16 @@ function rHoy() {
   $("#d-macros").innerHTML = mc("p", "Proteína", tot.p, t.prot, "p", "prot") + mc("c", "Hidratos", tot.c, t.carb, "c", "carb") + mc("f", "Grasa", tot.f, t.fat, "f", "fat");
 
   /* --- entrenamiento --- */
-  const acts = day.acts || [], ev = eventOn(d), load = loadLabel(s, w);
+  const acts = day.acts || [], ev = eventOn(d), load = loadLabel(s, w), sinfo = sessInfo(d);
   const status = acts.length ? `<span class="chip done">Hecho</span>` : s.unset ? `<span class="chip">Sin planificar</span>` : s.type === "descanso" ? `<span class="chip">Descanso</span>` : `<span class="chip now">Previsto</span>`;
   const askRun = !acts.length && !s.unset && ty.dist && d <= today();
   $("#d-sess").innerHTML = `
     <div class="card-head"><span class="eyebrow">${isToday ? "Entrenamiento de hoy" : "Entrenamiento del día"}</span>${status}</div>
-    <h2 class="big">${ev ? esc(ev.name) : s.unset ? "¿Qué entrenas " + (isToday ? "hoy" : "este día") + "?" : esc(ty.n)}</h2>
+    <h2 class="big">${ev ? esc(ev.name) : s.unset ? "¿Qué entrenas " + (isToday ? "hoy" : "este día") + "?" : esc(sessName(s))}</h2>
     ${s.unset ? `<p class="sub">Elige el entreno y ajusto tus calorías. Mientras tanto cuenta como descanso.</p>`
       : s.type === "descanso" ? `<p class="sub">Día de recuperación.</p>`
       : `<dl class="kv"><div><dt>Duración</dt><dd class="num">${nf(s.min)} <small>min</small></dd></div><div><dt>Carga estimada</dt><dd>${load}</dd></div><div><dt>Gasto previsto</dt><dd class="num">${nf(actKcal({ type: s.type, min: s.min }, w))} <small>kcal</small></dd></div></dl>`}
+    ${sinfo && sinfo.box ? `${sinfo.main.length ? `<ul class="pnotes">${sinfo.main.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}${sinfo.tip ? `<p class="sub">${esc(sinfo.tip)}</p>` : ""}` : sinfo ? `<p class="sub">Semana ${sinfo.wk} de tu plan (${esc(sinfo.ph.toLowerCase())}). ${esc(sinfo.feel)}</p>` : ""}
     ${s.unset ? "" : injHtml(s.type)}
     ${dm && hl.hypo && !s.unset && s.type !== "descanso" && isToday && !((day.glu || []).some(x => x.when === "pre_entreno")) ? `<p class="sub">Con tu tratamiento, mide la glucosa antes y después de entrenar y lleva hidratos rápidos encima.</p>` : ""}
     ${askRun ? `<p class="ask">¿Has salido ya? Registra distancia y tiempo${canImg ? ", pasa la captura de Strava" : ""} o importa el archivo del reloj, y recalculo lo que te toca comer.</p>` : ""}
@@ -1329,10 +1356,13 @@ function rHoy() {
         <span><b>${esc((TYPES[a.type] || {}).n || a.type)}</b>${a.title ? " · " + esc(a.title) : ""}</span>
         <span class="num">${nf(actKcal(a, w))} kcal</span>
         <button class="icon-btn" type="button" data-del-act="${esc(a.id)}" aria-label="Borrar entreno">×</button>
-        <small class="num">${[a.km > 0 ? nf(a.km, 2) + " km" : "", a.min > 0 ? nf(a.min) + "′" : "", pace(a), a.hr > 0 ? nf(a.hr) + " ppm" : "", a.src === "strava" ? "de Strava" : a.src === "gpx" ? "de GPX" : a.src === "reloj" ? "del reloj" : a.src === "ia" ? "apuntado por el asistente" : ""].filter(Boolean).join(" · ")}</small>
+        <small class="num">${[a.km > 0 ? nf(a.km, 2) + " km" : "", a.min > 0 ? nf(a.min) + "′" : "", pace(a), a.hr > 0 ? nf(a.hr) + " ppm" : "", a.src === "strava" ? "de Strava" : a.src === "gpx" ? "de GPX" : a.src === "reloj" ? "del reloj" : a.src === "ia" ? "apuntado por el asistente" : a.src === "plan" ? "según lo previsto" : ""].filter(Boolean).join(" · ")}</small>
       </li>`).join("")}</ul>` : ""}
     <div class="row actions">
-      <button class="btn" type="button" data-sheet="act">Registrar entreno</button>
+      ${sinfo && !sinfo.box ? `<button class="btn" type="button" data-sess="${d}">Ver la sesión</button>` : ""}
+      ${!acts.length && !s.unset && s.type !== "descanso" && d <= today() ? `<button class="btn${sinfo && !sinfo.box ? " ghost" : ""}" type="button" data-done-sess="${d}">Hecho tal cual</button>` : ""}
+      ${sample && canImg && !s.g && !acts.length && isToday ? `<span class="btn ghost fileb">Foto de la pizarra<input class="wod-file" type="file" accept="image/*" aria-label="Foto de la pizarra o del entreno de hoy"></span>` : ""}
+      <button class="btn${(sinfo && !sinfo.box) || (!acts.length && !s.unset && s.type !== "descanso" && d <= today()) ? " ghost" : ""}" type="button" data-sheet="act">Registrar entreno</button>
       <button class="btn ghost" type="button" data-gpx="1">Importar del reloj</button>
       <button class="btn ghost" type="button" data-sheet="plan" data-date="${d}">${s.unset ? "Elegir entreno" : "Cambiar previsto"}</button>
     </div>`;
@@ -1466,7 +1496,7 @@ function rSemana() {
   $("#wk-list").innerHTML = info.map(x => {
     const ty = TYPES[x.s.type] || TYPES.descanso, kmd = x.acts.reduce((a, b) => a + (b.km || 0), 0), mind = x.acts.reduce((a, b) => a + (b.min || 0), 0), inj = x.s.unset ? [] : injFor(x.s.type);
     const st = x.acts.length ? ["done", "Completado"] : x.d === t0 ? ["now", "Hoy"] : x.s.unset ? ["", "Sin planificar"] : x.s.type === "descanso" ? ["", "Descanso"] : x.d < t0 ? ["bad", "No hecho"] : ["", "Previsto"];
-    const name = x.ev ? x.ev.name : x.acts.length ? ((TYPES[x.acts[0].type] || {}).n || "Entreno") + (x.acts.length > 1 ? " +" + (x.acts.length - 1) : "") : x.s.unset ? "Por decidir" : ty.n;
+    const name = x.ev ? x.ev.name : x.acts.length ? ((TYPES[x.acts[0].type] || {}).n || "Entreno") + (x.acts.length > 1 ? " +" + (x.acts.length - 1) : "") : x.s.unset ? "Por decidir" : sessName(x.s);
     const detail = x.acts.length ? [kmd > 0 ? nf(kmd, 1) + " km" : "", mind > 0 ? nf(mind) + " min" : ""].filter(Boolean).join(" · ") : (!x.s.unset && x.s.min ? nf(x.s.min) + " min" : "");
     return `<li class="wcard ${x.d === t0 ? "today" : ""}">
       <button class="wmain" type="button" data-open="${x.d}" aria-label="Abrir ${esc(longDate(x.d))}">
@@ -1714,7 +1744,7 @@ $("#p-form").addEventListener("submit", e => {
   }
   const first = !S.profile;
   profDirty = false;
-  saveProfile(Object.assign(S.profile ? { diet: S.profile.diet, rem: S.profile.rem, medrem: S.profile.medrem, foods: S.profile.foods } : {}, { name: $("#p-name").value.trim().slice(0, 40), sex: $("#p-sex").value, age: Math.round(age), height, weight, activity: num($("#p-act").value), goal: $("#p-goal").value, plan: $("#p-plan").value, week, events: evs, target: tgt, health: readHealth(), injuries: clone(injuries()) }));
+  saveProfile(Object.assign(S.profile ? { diet: S.profile.diet, rem: S.profile.rem, medrem: S.profile.medrem, foods: S.profile.foods, mode: S.profile.mode, guide: S.profile.guide } : {}, { name: $("#p-name").value.trim().slice(0, 40), sex: $("#p-sex").value, age: Math.round(age), height, weight, activity: num($("#p-act").value), goal: $("#p-goal").value, plan: $("#p-plan").value, week, events: evs, target: tgt, health: readHealth(), injuries: clone(injuries()) }));
   msg.textContent = "Guardado."; msg.className = "msg";
   if (first) location.hash = "#hoy";
 });
@@ -2281,12 +2311,12 @@ async function idea() {
 let aiLog = [], aiBusy = false;
 function rAi() {
   const box = $("#ai-log");
-  box.innerHTML = (aiLog.length ? aiLog : [{ who: "ia", text: "Cuéntame qué has comido o qué has entrenado y lo apunto por ti. También puedes mandarme una foto del plato o preguntarme cómo vas hoy." }]).map((m, i) => `<div class="aimsg ${m.who}${m.err ? " err" : ""}">${m.img ? `<small>Archivo enviado</small>` : ""}${m.text ? `<p>${esc(m.text)}</p>` : ""}${(m.done || []).map((a, j) => `<div class="aidone${a.off ? " off" : ""}"><span>${esc(a.label)}</span>${a.off ? `<small>deshecho</small>` : `<button class="btn ghost sm" type="button" data-ai-undo="${i}:${j}">Deshacer</button>`}</div>`).join("")}</div>`).join("")
+  box.innerHTML = (aiLog.length ? aiLog : [{ who: "ia", text: "Hola" + (S.profile && S.profile.name ? ", " + S.profile.name.split(" ")[0] : "") + ". ¿Cómo estás hoy? Cuéntame qué has comido o entrenado y lo apunto por ti, pregúntame qué toca hoy o pídeme que te organice la semana. También puedes mandarme una foto del plato." }]).map((m, i) => `<div class="aimsg ${m.who}${m.err ? " err" : ""}">${m.img ? `<small>Archivo enviado</small>` : ""}${m.text ? `<p>${esc(m.text)}</p>` : ""}${(m.done || []).map((a, j) => `<div class="aidone${a.off ? " off" : ""}"><span>${esc(a.label)}</span>${a.off ? `<small>deshecho</small>` : `<button class="btn ghost sm" type="button" data-ai-undo="${i}:${j}">Deshacer</button>`}</div>`).join("")}</div>`).join("")
     + (aiBusy ? `<div class="aimsg ia"><p>Pensando…</p></div>` : "");
   box.scrollTop = box.scrollHeight; $("#ai-tips").hidden = aiLog.length > 0; $("#ai-send").disabled = aiBusy; $("#ai-photo").accept = sample && sample.web ? "image/*,application/pdf" : "image/*";
 }
 function aiContext() {
-  const p = S.profile, d = today(), now = new Date(), t = goal(d), pk = planKind(d), tot = totals(d), day = S.days[d] || {}, s = planned(d), slotN = k => (SLOTS.find(x => x[0] === k) || [])[1] || k;
+  const p = S.profile, d = today(), now = new Date(), t = goal(d), pk = planKind(d), si = sessInfo(d), tot = totals(d), day = S.days[d] || {}, s = planned(d), slotN = k => (SLOTS.find(x => x[0] === k) || [])[1] || k;
   const actTxt = a => ((TYPES[a.type] || {}).n || a.type) + (a.min ? " " + Math.round(a.min) + " min" : "") + (a.km ? " " + nf(a.km, 1) + " km" : "");
   const past = [1, 2, 3, 4, 5, 6].map(i => { const k = addDays(d, -i), x = S.days[k]; return x && ((x.meals || []).length || (x.acts || []).length) ? `${k}: ${Math.round(totals(k).kcal)} de ${Math.round(goal(k).kcal)} kcal; entrenos: ${(x.acts || []).map(actTxt).join(", ") || "ninguno"}` : ""; }).filter(Boolean);
   const mine = myFoods().slice(-30).map(f => `${f.name}${f.g ? " (" + qtyTxt(f.g, f.u) + ")" : " (1 ración)"}: ${f.kcal} kcal, P ${f.p}, H ${f.c}, G ${f.f}`);
@@ -2295,30 +2325,41 @@ function aiContext() {
     `\nObjetivo de hoy${t.plan ? ` (es el de su plan pautado; el cálculo de la app daría unas ${r10(t.est.kcal)} kcal, que es una estimación con un 10-15 % de margen: no la des como exacta ni le digas que cambie su plan por ella)` : " (estimación de la app, con un 10-15 % de margen)"}: ${Math.round(t.kcal)} kcal, ${Math.round(t.prot)} g de proteína, ${Math.round(t.carb)} g de hidratos, ${Math.round(t.fat)} g de grasa. Lleva: ${Math.round(tot.kcal)} kcal, P ${Math.round(tot.p)}, H ${Math.round(tot.c)}, G ${Math.round(tot.f)}.` +
     `\nComidas apuntadas hoy: ${(day.meals || []).map(m => slotN(m.slot) + ": " + m.name + (m.g ? " " + qtyTxt(m.g, m.u) : "") + " (" + m.kcal + " kcal)").join("; ") || "ninguna"}.` +
     `\nSesión prevista hoy: ${s.unset ? "sin planificar" : (TYPES[s.type] || {}).n + (s.min ? " " + s.min + " min" : "")}. Entrenos apuntados hoy: ${(day.acts || []).map(actTxt).join("; ") || "ninguno"}.` +
+    `\nCómo entrena: ${p.mode === "guia" ? "está empezando y sigue el plan «Híbrido desde cero» de la app (" + p.guide.n + " días por semana)" : p.mode === "box" ? "va a un box o tiene entrenador que le marca la sesión" : p.mode === "solo" ? "entrena por su cuenta y se planifica solo" : "no lo ha dicho"}.` +
+    (si ? `\nSesión prevista hoy, en detalle: ${[si.title, si.warm, (si.main || []).join(" / "), si.feel, si.tip].filter(Boolean).join(" · ").slice(0, 900)}` : "") +
+    `\nPróximos días: ${[1, 2, 3, 4, 5, 6].map(i => { const k = addDays(d, i), q = planned(k), e = eventOn(k); return DOW[dow(k)] + " " + k.slice(8) + ": " + (e ? "compite (" + e.name + ")" : q.unset ? "sin planificar" : sessName(q) + (q.min ? " " + q.min + "′" : "")); }).join("; ")}.` +
     (pk ? `\nPlan pautado: hoy le toca «${pk.k.n}». Opciones: ${pk.k.moms.map(m => m.n + ": " + m.opts.map(o => o.n).join(" | ")).join("; ").slice(0, 1200)}.` : "") +
     (past.length ? `\nDías anteriores:\n${past.join("\n")}` : "") +
     (mine.length ? `\nPlatos que tiene guardados (si nombra uno, usa estos valores):\n${mine.join("\n")}` : "");
 }
 const AIROLE = () => `Eres el asistente de Elitepro, una app de entrenamiento y nutrición. Hablas en español de España, con tuteo, breve y claro.` +
-  `\nHaces dos cosas: apuntar en la app las comidas y los entrenos que la persona te cuenta o te enseña en una foto, y contestar sus dudas sobre su día, su semana, su comida y su entreno con los datos de abajo.` +
+  `\nEres también el motivador personal de esta persona: cercano y con interés de verdad por ella. Si te saluda o te cuenta cómo está, primero respóndele a eso; reconoce lo que ha hecho bien, anímale con lo siguiente que toca y nunca le eches en cara lo que no ha hecho. Sin frases hechas ni exageraciones.` +
+  `\nHaces tres cosas: apuntar en la app las comidas y los entrenos que la persona te cuenta o te enseña en una foto; ayudarle a organizar su día y su semana de entrenos; y contestar sus dudas sobre su día, su semana, su comida y su entreno con los datos de abajo.` +
   `\nReglas:` +
   `\n- Por cada alimento o plato que diga que YA ha comido o bebido, una acción "meal". Sin cantidades, supón raciones normales de un adulto en España y dilo en la respuesta. No apuntes lo que solo piensa comer ni lo que pregunta.` +
   `\n- Por cada entreno que diga que YA ha hecho, una acción "act". Si no da ni duración ni distancia, no lo apuntes: pregúntaselo.` +
   `\n- Si en la foto hay un plato, apúntalo; si es una captura de una actividad deportiva, apunta el entreno con sus datos.` +
   `\n- Si no tienes claro qué es o cuánto, pregunta antes de apuntar. No inventes datos que no estén aquí.` +
+  `\n- Si dice lo que VA a entrenar hoy o un día de las próximas dos semanas, una acción "plan" para ese día. Si te pide que le propongas el día o la semana, propón entrenos acordes a su nivel y a lo que ya tiene previsto y explícaselo; añade las acciones "plan" solo si te pide que lo dejes puesto.` +
+  `\n- Puedes explicar de forma sencilla y segura cómo se hace un ejercicio o la sesión que tiene prevista. Si está cansado, propón aflojar; si habla de dolor, que no fuerce esa zona y que lo vea un fisio o un médico si no se pasa.` +
   `\n- No des consejos médicos ni sobre medicación, y no diagnostiques. Si te lo piden, di que lo consulte con su médico o nutricionista.` +
   `\n- "date" solo si no fue hoy, y como mucho 7 días atrás.` +
-  `\nResponde solo con un objeto JSON, sin más texto: {"reply": "lo que le dices, máximo 80 palabras, texto plano sin asteriscos", "actions": [...]}. Si no hay nada que apuntar, "actions": [].` +
+  `\nResponde solo con un objeto JSON, sin más texto: {"reply": "lo que le dices, máximo 110 palabras, texto plano sin asteriscos", "actions": [...]}. Si no hay nada que apuntar, "actions": [].` +
   `\nAcciones posibles:` +
   `\n{"type": "meal", "slot": uno de ${JSON.stringify(SLOTS.map(x => x[0]))} (${SLOTS.map(x => x[0] + " = " + x[1].toLowerCase()).join(", ")}), "name": "nombre corto", "g": cantidad (gramos, o mililitros si es bebida o líquido), "u": "g" o "ml", "kcal": número, "p": proteína, "c": hidratos, "f": grasa, "az": azúcares, "fi": fibra, "date": "AAAA-MM-DD"}` +
-  `\n{"type": "act", "sport": uno de ${JSON.stringify(Object.keys(TYPES).filter(k => k !== "descanso"))}, "min": minutos, "km": kilómetros o 0, "kcal": calorías si las dice o 0, "hr": pulso medio o 0, "title": "nombre corto", "date": "AAAA-MM-DD"}`;
+  `\n{"type": "act", "sport": uno de ${JSON.stringify(Object.keys(TYPES).filter(k => k !== "descanso"))}, "min": minutos, "km": kilómetros o 0, "kcal": calorías si las dice o 0, "hr": pulso medio o 0, "title": "nombre corto", "date": "AAAA-MM-DD"}` +
+  `\n{"type": "plan", "sport": uno de ${JSON.stringify(Object.keys(TYPES).filter(k => k !== "competicion"))}, "min": minutos previstos (0 si es descanso), "title": "nombre corto o cadena vacía", "date": "AAAA-MM-DD"}`;
 /* Lo que propone la IA se revisa antes de guardarlo: tipos conocidos, números razonables y fechas de la última semana */
 function aiApply(list) {
   const done = [], byDay = {}, t0 = today(), lo = addDays(t0, -7), n = v => { v = Number(v); return v > 0 && isFinite(v) ? Math.round(v * 10) / 10 : 0; };
   (Array.isArray(list) ? list : []).slice(0, 12).forEach(a => {
     if (!a || typeof a !== "object") return;
     const date = /^\d{4}-\d{2}-\d{2}$/.test(a.date || "") && a.date <= t0 && a.date >= lo ? a.date : t0, d = byDay[date] || (byDay[date] = getDay(date)), when = date === t0 ? "" : " (" + date.slice(8) + "/" + date.slice(5, 7) + ")";
-    if (a.type === "meal" && a.name && Number(a.kcal) >= 0 && Number(a.kcal) <= 5000) {
+    if (a.type === "plan" && TYPES[a.sport] && a.sport !== "competicion") { // entreno previsto: hoy o los próximos 14 días
+      const pd = /^\d{4}-\d{2}-\d{2}$/.test(a.date || "") && a.date >= t0 && a.date <= addDays(t0, 14) ? a.date : t0, d2 = byDay[pd] || (byDay[pd] = getDay(pd)), prev = d2.session ? clone(d2.session) : null;
+      d2.session = a.sport === "descanso" ? { type: "descanso", min: 0 } : Object.assign({ type: a.sport, min: Math.min(Math.max(Math.round(n(a.min)) || 60, 5), 600) }, a.title ? { title: String(a.title).slice(0, 60) } : {});
+      done.push({ kind: "session", id: "s", date: pd, prev, label: "Previsto " + (pd === t0 ? "hoy" : shortDate(pd)) + ": " + (d2.session.title || TYPES[a.sport].n) + (d2.session.min ? " · " + nf(d2.session.min) + "′" : "") });
+    } else if (a.type === "meal" && a.name && Number(a.kcal) >= 0 && Number(a.kcal) <= 5000) {
       const slot = SLOTS.some(x => x[0] === a.slot) ? a.slot : defaultSlot(), rec = { id: uidGen(), slot, name: String(a.name).slice(0, 80), g: Math.min(n(a.g), 5000), kcal: Math.round(n(a.kcal)), p: n(a.p), c: n(a.c), f: n(a.f), az: n(a.az), fi: n(a.fi), ia: true }; if (a.u === "ml" && rec.g > 0) rec.u = "ml";
       d.meals.push(rec); if (date === S.date) openSlots.add(slot);
       done.push({ kind: "meals", id: rec.id, date, label: SLOTS.find(x => x[0] === slot)[1] + ": " + rec.name + (rec.g ? " · " + qtyTxt(rec.g, rec.u) : "") + " · " + nf(rec.kcal) + " kcal" + when });
@@ -2356,7 +2397,7 @@ $("#sh-ai").addEventListener("click", e => {
   if (b.dataset.aiAsk) return void aiSend(b.dataset.aiAsk, null);
   if (b.dataset.aiUndo) {
     const [i, j] = b.dataset.aiUndo.split(":").map(Number), a = aiLog[i] && aiLog[i].done[j]; if (!a || a.off) return;
-    const d = getDay(a.date); d[a.kind] = d[a.kind].filter(x => x.id !== a.id); a.off = true; saveDay(d); rAi();
+    const d = getDay(a.date); if (a.kind === "session") { if (a.prev) d.session = a.prev; else delete d.session; } else d[a.kind] = d[a.kind].filter(x => x.id !== a.id); a.off = true; saveDay(d); rAi();
   }
 });
 
@@ -2628,12 +2669,12 @@ function cStore(me) { try { if (me === undefined) me = cs; if (me) localStorage.
 /* Huella de cada día y del perfil: sirve para saber qué ha cambiado aquí desde la última sincronización */
 const canon = o => o === null || typeof o !== "object" ? String(JSON.stringify(o)) : Array.isArray(o) ? "[" + o.map(canon).join(",") + "]" : "{" + Object.keys(o).sort().filter(k => o[k] !== undefined).map(k => JSON.stringify(k) + ":" + canon(o[k])).join(",") + "}";
 const h53 = str => { let a = 0xdeadbeef, b = 0x41c6ce57; for (let i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); a = Math.imul(a ^ ch, 2654435761); b = Math.imul(b ^ ch, 1597334677); } a = Math.imul(a ^ (a >>> 16), 2246822507) ^ Math.imul(b ^ (b >>> 13), 3266489909); b = Math.imul(b ^ (b >>> 16), 2246822507) ^ Math.imul(a ^ (a >>> 13), 3266489909); return (4294967296 * (2097151 & b) + (a >>> 0)).toString(36); };
-/* Cada dato tiene dos partes: la de entreno y nutrición, y la de salud (condición, límites del médico, lesiones, glucosa).
+/* Cada dato tiene dos partes: la de entreno y nutrición, y la de salud (condición, límites del médico, lesiones, glucosa y cómo dice que se encuentra cada día).
    La de salud solo sale del dispositivo con consentimiento expreso. */
-const cCore = (kind, o) => { if (!o) return null; const c = Object.assign({}, o); if (kind === "p") { delete c.health; delete c.injuries; delete c.medrem; } else delete c.glu; return c; };
+const cCore = (kind, o) => { if (!o) return null; const c = Object.assign({}, o); if (kind === "p") { delete c.health; delete c.injuries; delete c.medrem; } else { delete c.glu; delete c.feel; } return c; };
 /* Los recordatorios de medicación (`medrem`) no se suben nunca, ni siquiera con el consentimiento de salud */
 const cLocal = (kind, o) => { if (kind !== "p" || !o || o.medrem === undefined) return o; const c = Object.assign({}, o); delete c.medrem; return c; };
-const cHealth = (kind, o) => { if (!o) return null; if (kind === "p") return (o.health && o.health.cond) || (o.injuries || []).length ? { health: o.health, injuries: o.injuries } : null; return (o.glu || []).length ? { glu: o.glu } : null; };
+const cHealth = (kind, o) => { if (!o) return null; if (kind === "p") return (o.health && o.health.cond) || (o.injuries || []).length ? { health: o.health, injuries: o.injuries } : null; const h = {}; if ((o.glu || []).length) h.glu = o.glu; if (o.feel) h.feel = o.feel; return Object.keys(h).length ? h : null; };
 const hC = (kind, o) => o ? h53(canon(cCore(kind, o))) : "";
 const hH = (kind, o) => { const x = cHealth(kind, o); return x ? h53(canon(x)) : ""; };
 const cOut = (me, kind, o) => (!o ? o : me.health ? cLocal(kind, o) : cCore(kind, o));
@@ -2738,7 +2779,7 @@ function cSet(st) {
   const when = cs.at ? new Date(cs.at).toLocaleString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
   body.innerHTML = `<p><b>${esc(cs.email)}</b></p>
     <p class="sub" id="cl-status">${!on ? "La sesión ha caducado. Vuelve a entrar para seguir guardando en la nube." : st === "sync" ? "Sincronizando…" : st === "llave" ? CERR.llave : st === "err" ? "No hay conexión con la nube. Tus datos siguen en este dispositivo y se subirán cuando vuelva." : when ? "Última sincronización: " + esc(when) + "." : "Conectada."}</p>
-    ${on ? `<label class="chk"><input type="checkbox" id="cl-health" ${cs.health ? "checked" : ""}><span>Consiento expresamente que también se guarden en la nube mis datos de salud (condición, límites del médico, glucosa y lesiones). Si lo desmarcas, se borran de la nube y se quedan solo en este dispositivo.</span></label>` : ""}
+    ${on ? `<label class="chk"><input type="checkbox" id="cl-health" ${cs.health ? "checked" : ""}><span>Consiento expresamente que también se guarden en la nube mis datos de salud (condición, límites del médico, glucosa, lesiones y cómo dices que te encuentras cada día). Si lo desmarcas, se borran de la nube y se quedan solo en este dispositivo.</span></label>` : ""}
     <div class="row">${on ? `<button class="btn ghost sm" type="button" data-cl="sync">Sincronizar ahora</button><button class="btn ghost sm" type="button" data-cl="passwd">Cambiar contraseña</button>` : `<button class="btn" type="button" data-cl="login">Volver a entrar</button>`}<button class="btn ghost sm" type="button" data-cl="logout">Cerrar sesión</button>${on ? `<button class="btn ghost sm" type="button" data-cl="remove">Borrar mi cuenta</button>` : ""}</div>
     <p class="sub"><a href="privacidad.html" target="_blank" rel="noopener">Política de privacidad</a> · Para descargar todos tus datos usa «Descargar copia», aquí debajo.</p>`;
 }
@@ -2759,7 +2800,7 @@ function cForm(mode) {
   $("#cl-form").innerHTML = (mode === "register" ? mail + cFld("cl-pass", "Contraseña (mínimo 10 caracteres)", "password", "new-password", 'minlength="10"') + cFld("cl-pass2", "Repite la contraseña", "password", "new-password", 'minlength="10"') + cFld("cl-inv", "Código de invitación", "text", "off", 'placeholder="EP-XXXX-XXXX" maxlength="20"') +
       `<p class="sub">Con la contraseña se cifran tus datos antes de salir de este dispositivo. Guárdala bien: si la olvidas no se puede recuperar.</p>
       <label class="chk"><input type="checkbox" id="cl-terms" required><span>Tengo 18 años o más, he leído la <a href="privacidad.html" target="_blank" rel="noopener">política de privacidad</a> y acepto que mis datos de entreno y nutrición se guarden cifrados en la nube de Elitepro y que ${who} pueda verlos para hacer mi seguimiento.</span></label>
-      <label class="chk"><input type="checkbox" id="cl-hc"><span>Además, consiento expresamente que se guarden y que ${who} pueda ver mis datos de salud: condición, límites del médico, glucosa y lesiones. Es opcional: si no lo marcas, esos datos no salen de este dispositivo.</span></label>`
+      <label class="chk"><input type="checkbox" id="cl-hc"><span>Además, consiento expresamente que se guarden y que ${who} pueda ver mis datos de salud: condición, límites del médico, glucosa, lesiones y cómo dices que te encuentras cada día. Es opcional: si no lo marcas, esos datos no salen de este dispositivo.</span></label>`
     : mode === "login" ? mail + cFld("cl-pass", "Contraseña", "password", "current-password")
     : mode === "passwd" ? cFld("cl-pass", "Contraseña actual", "password", "current-password") + cFld("cl-new", "Contraseña nueva (mínimo 10 caracteres)", "password", "new-password", 'minlength="10"') + cFld("cl-pass2", "Repite la nueva", "password", "new-password", 'minlength="10"')
     : mode === "reset1" ? `<p class="sub">Te mandamos un código de 6 cifras al correo de tu cuenta. Con él pones una contraseña nueva.</p>` + cFld("cl-email", "Correo de tu cuenta", "email", "username", `value="${esc(cRst)}" maxlength="120"${cs && cs.token ? " readonly" : ""}`)
@@ -2970,7 +3011,7 @@ document.addEventListener("click", async e => { if (!e.target.closest("#pwa-go")
 pwaPaint();
 if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) navigator.serviceWorker.register("sw.js").catch(() => { /* sin soporte: la app sigue funcionando con conexión */ });
 /* ---------- Versión: cuando hay una publicación nueva, la app se actualiza sola (o avisa si estás a medias de algo) ---------- */
-const BUILD = "2180c1132417";
+const BUILD = "5f8d202940f7";
 async function upGo(v) {
   try { sessionStorage.setItem("elitepro:upd", v); } catch (e) { /* sin almacenamiento */ }
   try { await fetch(location.pathname, { cache: "reload" }); } catch (e) { /* sin conexión */ } // renueva la copia guardada por el navegador
@@ -3014,6 +3055,197 @@ $("#rs-yes").addEventListener("click", async () => {
   location.hash = S.profile ? "#hoy" : "#datos"; render(); toast(S.profile ? "Persona borrada. Ahora estás en otra." : "Todo borrado. Pon tus datos para empezar.");
 });
 
+/* ---------- Guía personal: primero pregunta cómo estás, luego te lleva por el día y la semana ---------- */
+const MODES = { guia: "Te guía la app", box: "Box o entrenador", solo: "Por tu cuenta" };
+/* Plan «Híbrido desde cero»: qué sesión cae cada día de la semana (0 = lunes) según los días que se entrena */
+const GDAYS = { 3: { 0: "fa", 2: "run", 4: "hyb" }, 4: { 0: "fa", 1: "run", 3: "fb", 5: "hyb" }, 5: { 0: "fa", 1: "run", 3: "fb", 4: "int", 5: "hyb" } };
+const GWARM = "Calienta 5–8′: mueve tobillos, cadera y hombros y haz 2′ de trote, remo o bici muy suave.", GCOOL = "Para acabar, 5′ andando y estira suave lo que has trabajado.";
+const GSAFE = "Si notas dolor (no agujetas), mareo o presión en el pecho, para. Si tienes alguna lesión o enfermedad, o llevas mucho tiempo sin hacer deporte, coméntalo antes con tu médico. Los primeros días pide a un monitor que te mire la técnica.";
+const GPHASE = ["", "Adaptación", "Adaptación", "Base", "Base", "Construcción", "Construcción", "Semana fuerte", "Descarga"];
+/* La sesión de un día del plan, con su progresión de 8 semanas (después se repiten las 4 últimas). lvl 0 = empieza de cero, 1 = ya se mueve algo */
+function gSess(key, wk, lvl) {
+  const w = wk <= 8 ? Math.max(1, wk) : 5 + ((wk - 9) % 4), ph = GPHASE[w];
+  if (key === "fa" || key === "fb") {
+    const sets = ["", "2 vueltas de 12 repeticiones", "2 vueltas de 12 repeticiones", "3 vueltas de 10 repeticiones", "3 vueltas de 10 repeticiones", "3 vueltas de 12 repeticiones", "3 vueltas de 12 repeticiones", "4 vueltas de 8 repeticiones con algo más de peso", "2 vueltas de 10 repeticiones, con el peso de siempre"][w];
+    const ex = key === "fa" ? [lvl ? "Sentadilla goblet (una mancuerna o kettlebell al pecho)" : "Sentadilla a un banco o silla, sin peso o con muy poco", lvl ? "Flexiones en el suelo" : "Flexiones inclinadas, con las manos en un banco", "Remo con mancuerna a una mano (las mismas por cada lado)", "Peso muerto rumano con mancuernas: espalda recta y cadera hacia atrás", lvl ? "Plancha 30–45 segundos" : "Plancha 20–30 segundos"]
+      : [lvl ? "Zancadas hacia atrás alternas" : "Subidas a un cajón bajo o a un step, alternando pierna", "Press de hombros con mancuernas", "Jalón al pecho, o remo en anillas o TRX", lvl ? "Hip thrust con peso" : "Puente de glúteo en el suelo", "Paseo del granjero 20–30 m con dos mancuernas", "Bicho muerto (dead bug): 8 por lado, despacio"];
+    return { key, wk: w, ph, type: "fuerza", min: [0, 35, 35, 45, 45, 50, 50, 55, 35][w], title: key === "fa" ? "Fuerza A · cuerpo entero" : "Fuerza B · cuerpo entero", warm: GWARM, main: [`Haz ${sets} de este circuito, descansando 60–90 segundos entre ejercicios:`].concat(ex), cool: GCOOL, feel: "Acaba cada serie pensando que podrías hacer 2 o 3 repeticiones más. La técnica manda sobre el peso.", tip: "Apunta el peso que usas: la semana que viene intenta repetirlo con mejor técnica antes de subirlo." };
+  }
+  if (key === "run") {
+    const lo = ["", "8 veces: 1′ trotando + 2′ andando", "8 veces: 1′30″ trotando + 2′ andando", "6 veces: 3′ trotando + 2′ andando", "5 veces: 4′ trotando + 2′ andando", "4 veces: 6′ trotando + 2′ andando", "3 veces: 8′ trotando + 2′ andando", "2 veces: 12′ trotando + 2′ andando", "20′ seguidos, muy suaves"][w], hiM = [0, 20, 23, 26, 30, 32, 35, 40, 25][w];
+    return { key, wk: w, ph, type: "carrera", min: lvl ? hiM + 10 : [0, 34, 38, 40, 40, 42, 40, 38, 30][w], title: lvl ? "Carrera suave" : "Correr y andar", warm: "Calienta 5′ andando ligero.", main: [lvl ? `${hiM}′ seguidos de carrera suave.` : lo + "."], cool: GCOOL, feel: "Ritmo al que puedas hablar con frases enteras. Si te ahogas, anda hasta recuperar: cuenta igual.", tip: "No mires el ritmo: lo que construye es el tiempo que pasas moviéndote, no la velocidad." };
+  }
+  if (key === "int") {
+    const reps = ["", "6 veces: 1′ alegre + 2′ muy suave", "6 veces: 1′ alegre + 2′ muy suave", "8 veces: 1′ alegre + 2′ muy suave", "8 veces: 1′ alegre + 1′30″ muy suave", "6 veces: 2′ alegre + 2′ muy suave", "6 veces: 2′ alegre + 1′30″ muy suave", "5 veces: 3′ alegre + 2′ muy suave", "4 veces: 1′ alegre + 2′ muy suave, sin apretar"][w];
+    return { key, wk: w, ph, type: "series", min: [0, 33, 33, 39, 35, 39, 36, 40, 27][w], title: "Cambios de ritmo", warm: "Calienta 10′ trotando muy suave o andando rápido.", main: [reps + "."], cool: GCOOL, feel: "El tramo alegre es vivo pero controlado, nunca un sprint: que el último te salga igual que el primero.", tip: "Si un día no llegas a todas las repeticiones, quédate en las que salgan bien." };
+  }
+  const R = [0, 4, 4, 5, 5, 6, 6, 8, 4][w], dist = (lvl ? [0, 400, 400, 400, 600, 600, 800, 800, 400] : [0, 200, 200, 300, 300, 400, 400, 400, 300])[w];
+  const st = ["15 sentadillas al aire", "200 m de remo o 1′ de bici", "20 m de paseo del granjero con dos mancuernas", "10 lanzamientos de balón a la pared, o 10 sentadillas con salto suave", "20 m de zancadas", "8 burpees sin salto: baja y sube a tu ritmo", "250 m de SkiErg o 1′ de comba", "20 m de empuje o arrastre de trineo ligero"];
+  return { key: "hyb", wk: w, ph, type: "hibrido", min: 22 + R * (lvl ? 5 : 4), title: "Híbrido · carrera y estaciones", warm: GWARM, main: [`${R} vueltas. En cada una: ${dist} m ${lvl ? "corriendo" : "trotando o andando rápido"} y después una estación, en este orden:`].concat(st.slice(0, R).map((x, i) => `Vuelta ${i + 1}: ${x}`)), cool: GCOOL, feel: "Ritmo constante: que la última vuelta salga igual que la primera. Entre vuelta y vuelta, respira lo que necesites.", tip: "Así es una prueba híbrida en pequeño: correr, hacer una estación y volver a correr. Lo que se entrena es no pararse." };
+}
+function guideOf(date) {
+  const p = S.profile, g = p && p.mode === "guia" && p.guide; if (!g) return null;
+  const key = (GDAYS[g.n] || GDAYS[3])[dow(date)]; if (!key) return null;
+  return gSess(key, Math.floor(daysTo(g.start, monday(date)) / 7) + 1, g.lvl ? 1 : 0);
+}
+/* La sesión prevista con su explicación: la de la guía, o la que se leyó de la pizarra del box */
+function sessInfo(date) {
+  const s = planned(date), d = S.days[date];
+  if (s.g && !(d && d.session)) return guideOf(date);
+  if (s.note || s.tip) return { type: s.type, min: s.min, title: s.title || (TYPES[s.type] || {}).n, main: String(s.note || "").split("\n").filter(Boolean), tip: s.tip || "", box: true };
+  return null;
+}
+const sessName = s => s.unset ? "Sin planificar" : s.title || (TYPES[s.type] || TYPES.descanso).n;
+function sessSheet(date) {
+  const g = sessInfo(date), s = planned(date), done = ((S.days[date] || {}).acts || []).length > 0; if (!g) return false;
+  $("#sh-sess-t").textContent = g.title;
+  $("#sess-body").innerHTML = `<p class="sub">${esc(cap(longDate(date)))} · ${nf(g.min)} min${g.ph ? ` · semana ${g.wk} de tu plan (${esc(g.ph.toLowerCase())})` : g.box ? " · leído de la pizarra" : ""}</p>
+    ${g.warm ? `<div><div class="eyebrow">Calentamiento</div><p>${esc(g.warm)}</p></div>` : ""}
+    <div><div class="eyebrow">${g.box ? "La sesión" : "Parte principal"}</div>${!g.box && g.main.length > 1 ? `<p>${esc(g.main[0])}</p>` : ""}<ol class="gsteps">${(!g.box && g.main.length > 1 ? g.main.slice(1) : g.main).map(x => `<li>${esc(x)}</li>`).join("")}</ol></div>
+    ${g.cool ? `<div><div class="eyebrow">Vuelta a la calma</div><p>${esc(g.cool)}</p></div>` : ""}
+    ${g.feel ? `<p class="ask"><b>Cómo de fuerte:</b> ${esc(g.feel)}</p>` : ""}
+    ${g.tip ? `<p class="sub">${esc(g.tip)}</p>` : ""}
+    ${injHtml(s.type)}
+    <p class="sub">${g.box ? "Es la lectura de la foto: si algo no cuadra, manda lo que diga tu entrenador." : GSAFE}</p>
+    <div class="row actions">${done ? "" : `<button class="btn" type="button" data-done-sess="${date}">Lo he hecho</button>`}<button class="btn ghost" type="button" data-sheet="plan" data-date="${date}">Cambiar por otro entreno</button></div>`;
+  return true;
+}
+
+/* --- Tarjeta de Hoy: saludo, cómo estás, y el día paso a paso --- */
+const FEEL = { top: "Con energía", ok: "Normal", low: "Cansado", pain: "Con molestias" };
+const GSHARE = { des: 0.25, com: 0.38, cen: 0.30 }, GCUT = { des: 12, com: 17, cen: 24 }, GFROM = { des: 0, com: 12.5, cen: 19.5 };
+function yesterdayLine() {
+  const t0 = today(), y = addDays(t0, -1), has = k => { const x = S.days[k]; return !!x && ((x.meals || []).length > 0 || (x.acts || []).length > 0); };
+  let streak = 0; while (streak < 60 && has(addDays(y, -streak))) streak++;
+  const yd = S.days[y] || {}, acts = (yd.acts || []).length > 0, any = Object.keys(S.days).some(k => k < t0 && has(k));
+  if (acts && metDay(y)) return "Ayer entrenaste y cumpliste tu objetivo: muy bien hecho." + (streak >= 3 ? ` Llevas ${streak} días seguidos.` : "");
+  if (acts) return "Ayer entrenaste: eso suma." + (streak >= 3 ? ` Llevas ${streak} días seguidos apuntando.` : "");
+  if (has(y)) return streak >= 3 ? `Llevas ${streak} días seguidos apuntando: la constancia es lo que cuenta.` : "Ayer lo apuntaste: la constancia es lo que cuenta.";
+  return any ? "Ayer no apuntaste nada. No pasa nada: hoy seguimos." : "Me alegra que empieces. Vamos paso a paso, sin prisa.";
+}
+function rGuide() {
+  const box = $("#guide-card"), d = S.date, t0 = today(); if (!box) return;
+  box.hidden = d !== t0; if (d !== t0) return;
+  const p = S.profile, day = S.days[d] || {}, s = planned(d), acts = day.acts || [], meals = day.meals || [], t = goal(d), tot = totals(d), now = new Date(), h = now.getHours() + now.getMinutes() / 60;
+  const hi = h < 6 ? "Buenas noches" : h < 13 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches", name = p.name ? ", " + esc(p.name.split(" ")[0]) : "";
+  const rest = !s.unset && s.type === "descanso", trainOn = !s.unset && !rest, info = sessInfo(d), feel = day.feel;
+  const head = `<div class="card-head"><span class="eyebrow">Tu guía de hoy</span>${p.mode ? `<button class="chip linkchip" type="button" data-sheet="start">${MODES[p.mode]}</button>` : ""}</div>`;
+  const ai = sample && canImg, wod = lbl => ai ? `<span class="btn ghost sm fileb">${lbl}<input class="wod-file" type="file" accept="image/*" aria-label="Foto de la pizarra o del entreno de hoy"></span>` : "";
+  if (!feel) { // lo primero: cómo estás
+    box.innerHTML = head + `<h2 class="ghi">${hi}${name}.</h2><p class="sub">${yesterdayLine()}</p>
+      <p class="gq">Antes de nada: ¿cómo te encuentras hoy?</p>
+      <div class="gfeel">${Object.entries(FEEL).map(([k, v]) => `<button class="btn ghost" type="button" data-feel="${k}">${v}</button>`).join("")}</div>
+      <p class="sub">Hoy toca: <b>${rest ? "descanso" : s.unset ? "entreno por decidir" : esc(sessName(s)) + (s.min ? " · " + nf(s.min) + "′" : "")}</b>. Te lo cuento en cuanto me digas cómo estás. <button class="linkbtn" type="button" data-feel="na">Ahora no</button></p>`;
+    return;
+  }
+  /* respuesta a cómo está */
+  const soft = trainOn && !acts.length ? `<button class="btn ghost sm" type="button" data-soft="${d}">Cambiar por movilidad suave (30′)</button>` : "";
+  const care = feel === "top" ? `¡Me alegro! Día para aprovechar${trainOn && !acts.length ? ": disfruta el entreno y come lo que toca" : ""}.`
+    : feel === "ok" ? "Bien. Paso a paso, que hoy sale."
+    : feel === "low" ? `Gracias por decírmelo. Hoy toca cuidarse${trainOn && !acts.length ? ": haz la sesión más corta y más suave, o cámbiala" : ""}. Y no recortes comida: comer y dormir bien es lo que más recupera.`
+    : feel === "pain" ? "Lo primero eres tú. Si es dolor y no agujetas, hoy no fuerces esa zona. Si dura más de unos días o va a más, que te lo vea un fisio o un médico."
+    : "";
+  const careBtns = feel === "low" ? soft : feel === "pain" ? soft + `<a class="btn ghost sm" href="#datos" data-goto="inj-box">Apuntar la molestia</a>` : "";
+  /* pasos del día */
+  const pk = planKind(d), dslots = (diet() || {}).slots || {}, left = ["des", "com", "cen"].filter(k => !meals.some(m => m.slot === k) && h < GCUT[k]), rk = Math.max(0, t.kcal - tot.kcal), rp = Math.max(0, t.prot - tot.p), shareSum = left.reduce((a, k) => a + GSHARE[k], 0) || 1;
+  const mealStep = k => {
+    const n = SLOTS.find(x => x[0] === k)[1], ms = meals.filter(m => m.slot === k), kc = ms.reduce((a, m) => a + m.kcal, 0);
+    if (ms.length) return { k, done: true, label: n, detail: nf(kc) + " kcal apuntadas", btn: "" };
+    const plan = pk ? pk.k.moms.some(m => m.s === k) : (dslots[k] || []).length > 0;
+    const detail = plan ? "lo tienes en tu plan" : left.includes(k) && rk > 0 ? `unas ${nf(r10(Math.min(rk * GSHARE[k] / shareSum, 0.45 * t.kcal)))} kcal con ${nf(Math.round(Math.min(rp * GSHARE[k] / shareSum, 0.45 * t.prot) / 5) * 5)} g de proteína` : "sin apuntar";
+    const btn = pk && plan ? `<button class="btn ghost sm" type="button" data-plan-slot="${k}">Elegir del plan</button>` : plan ? `<button class="btn ghost sm" type="button" data-log-plan="${k}">Apuntar lo pautado</button>` : `<button class="btn ghost sm" type="button" data-add-slot="${k}">Apuntar</button>`;
+    return { k, done: false, late: h >= GCUT[k], label: n, detail, btn };
+  };
+  const train = acts.length ? { k: "ent", done: true, label: "Entreno", detail: "hecho: " + acts.map(a => (TYPES[a.type] || {}).n || "entreno").join(", ") + ". Buen trabajo.", btn: "" }
+    : rest ? { k: "ent", done: true, label: "Descanso", detail: "hoy se recupera. Un paseo de 20–30′ viene bien.", btn: "" }
+    : s.unset ? { k: "ent", done: false, label: "Entreno", detail: p.mode === "box" ? "pásame la foto de la pizarra y te digo cómo queda el día" : "aún no has elegido qué haces hoy", btn: wod("Foto de la pizarra") + `<button class="btn ghost sm" type="button" data-sheet="plan" data-date="${d}">Elegir entreno</button>` }
+    : { k: "ent", done: false, label: esc(sessName(s)), detail: nf(s.min) + " min" + (info && info.ph ? " · semana " + info.wk + " de tu plan" : ""), btn: (info ? `<button class="btn ghost sm" type="button" data-sess="${d}">Ver la sesión</button>` : wod("Foto de la pizarra")) + `<button class="btn ghost sm" type="button" data-done-sess="${d}">Hecho</button>` };
+  const steps = [mealStep("des"), train, mealStep("com"), mealStep("cen")];
+  const lastW = Object.values(S.days).filter(x => x.weight > 0).map(x => x.date).sort().pop();
+  if (!lastW || daysTo(lastW, d) >= 7) steps.push({ k: "peso", done: false, opt: true, label: "Peso", detail: lastW ? "hace más de una semana que no te pesas" : "pésate para afinar tus cálculos", btn: `<button class="btn ghost sm" type="button" data-sheet="peso">Registrar</button>` });
+  /* el siguiente paso, según la hora */
+  const mealNow = ["des", "com", "cen"].map(k => steps.find(x => x.k === k)).find(x => !x.done && h >= GFROM[x.k] && h < GCUT[x.k]);
+  const next = mealNow || (!train.done ? train : steps.find(x => !x.done && !x.late && !x.opt));
+  const gaps = [rp >= 10 ? `${nf(rp)} g de proteína` : "", rk > 0.08 * t.kcal ? `${nf(r10(rk))} kcal` : ""].filter(Boolean);
+  const headline = !next ? (meals.length && !gaps.length ? "Día completo. Así se hace." : meals.length ? `Vas bien. Para cerrar el día te quedan ${yList(gaps)}.` : "Hoy aún no has apuntado nada: empieza por lo último que has comido.")
+    : next.k === "ent" ? (s.unset ? "Dime qué entrenas hoy y ajusto el día." : `Te toca entrenar: ${esc(sessName(s).toLowerCase())}, ${nf(s.min)} minutos.`)
+    : `Siguiente: ${next.label.toLowerCase()}${/^unas/.test(next.detail) ? ", " + next.detail : ""}.`;
+  const tm = addDays(d, 1), st = planned(tm), evT = eventOn(tm), tg = targetEv(d), wk = [...Array(7)].map((_, i) => addDays(monday(d), i)), wkPlan = wk.filter(x => { const q = planned(x); return !q.unset && q.type !== "descanso"; }).length, wkDone = wk.filter(x => ((S.days[x] || {}).acts || []).length).length;
+  box.innerHTML = head + `<p class="sub">${hi}${name}. ${care} <button class="linkbtn" type="button" data-feel="">${feel === "na" ? "Decirte cómo estoy" : "Cambiar"}</button></p>
+    ${careBtns ? `<div class="row">${careBtns}</div>` : ""}
+    <h2 class="ghi">${headline}</h2>
+    <ul class="gsteps2">${steps.map(x => `<li class="${x.done ? "done" : ""}${x === next ? " next" : ""}"><i aria-hidden="true">${x.done ? "✓" : ""}</i><span><b>${x.label}</b> <small>${esc(x.detail)}</small></span><span class="gbtn">${x.btn}</span></li>`).join("")}</ul>
+    <p id="g-msg" class="msg" aria-live="polite"></p>
+    <p class="sub">Mañana: <b>${evT ? esc(evT.name) : st.unset ? "por decidir" : esc(sessName(st)) + (st.type !== "descanso" && st.min ? " · " + nf(st.min) + "′" : "")}</b>. Esta semana llevas ${wkDone}${wkPlan ? " de " + wkPlan : ""} ${wkPlan === 1 || (!wkPlan && wkDone === 1) ? "entreno" : "entrenos"}.${tg ? ` Quedan ${daysTo(d, tg.date)} días para ${esc(tg.name)}.` : ""} <a href="#semana" style="color:var(--ink)">Ver mi semana</a></p>
+    ${p.mode ? "" : `<p class="ask">¿Te organizo los entrenos? Dime cómo entrenas y te preparo la semana. <button class="btn sm" type="button" data-sheet="start">Empezar</button></p>`}`;
+}
+
+/* --- Cómo entrenas: tres caminos --- */
+let stDraft = null;
+function startSheet(step) {
+  const p = S.profile, g = p.guide || {}; if (!step || !stDraft) stDraft = { mode: p.mode || "", n: g.n || 3, lvl: g.lvl ? 1 : 0, kind: "crossfit", days: (p.week || []).map((x, i) => x && x.type !== "descanso" ? i : -1).filter(i => i >= 0) };
+  const b = $("#start-body"), D = stDraft, L = ["L", "M", "X", "J", "V", "S", "D"], opt = (k, v, t, sub) => `<button class="choice${D[k] === v ? " main" : ""}" type="button" data-st="${k}:${v}">${t}${sub ? `<small class="hint">${sub}</small>` : ""}</button>`;
+  if (!step) { b.innerHTML = `<p class="sub">Dime cómo entrenas y preparo tu día y tu semana a tu medida. Lo puedes cambiar cuando quieras.</p>
+      <div class="col" style="gap:10px"><button class="choice${D.mode === "guia" ? " main" : ""}" type="button" data-st-go="guia">Estoy empezando: guíame<small class="hint">Te doy un plan de híbrido explicado paso a paso</small></button>
+      <button class="choice${D.mode === "box" ? " main" : ""}" type="button" data-st-go="box">Voy a un box o tengo entrenador<small class="hint">Me dicen qué hacer: te paso la foto de la pizarra</small></button>
+      <button class="choice${D.mode === "solo" ? " main" : ""}" type="button" data-st-go="solo">Entreno por mi cuenta<small class="hint">Sé lo que hago: yo planifico mi semana</small></button></div>`; return; }
+  if (step === "guia") b.innerHTML = `<p class="sub">Plan «Híbrido desde cero»: fuerza, carrera y circuitos, con 8 semanas de progresión. Cada día verás la sesión explicada.</p>
+      <div><div class="eyebrow">¿Cuántos días puedes entrenar?</div><div class="choices" style="padding-top:8px">${opt("n", 3, "3 días", "L · X · V")}${opt("n", 4, "4 días", "L · M · J · S")}${opt("n", 5, "5 días", "L · M · J · V · S")}</div></div>
+      <div><div class="eyebrow">¿De dónde partes?</div><div class="choices" style="padding-top:8px">${opt("lvl", 0, "Empiezo de cero", "o vuelvo después de mucho tiempo")}${opt("lvl", 1, "Ya me muevo algo", "corro 20′ seguidos o hago gimnasio")}</div></div>
+      <p class="sub">${GSAFE}</p>
+      <div class="row actions"><button class="btn" type="button" data-st-save="guia">Crear mi plan</button><button class="btn ghost" type="button" data-st-go="">Atrás</button></div>`;
+  if (step === "box") b.innerHTML = `<p class="sub">Marca los días que vas y qué tipo de clase es. Cada día, pásame la foto de la pizarra y ajusto calorías y comidas a lo que toque.</p>
+      <div><div class="eyebrow">¿Qué haces allí?</div><div class="choices" style="padding-top:8px">${opt("kind", "crossfit", "Crossfit")}${opt("kind", "hibrido", "Híbrido / Hyrox")}${opt("kind", "funcional", "Funcional")}</div></div>
+      <div><div class="eyebrow">¿Qué días vas?</div><div class="gdays" style="padding-top:8px">${L.map((x, i) => `<button class="btn ${D.days.includes(i) ? "" : "ghost"} sm" type="button" data-st-day="${i}" aria-pressed="${D.days.includes(i)}">${x}</button>`).join("")}</div></div>
+      <div class="row actions"><button class="btn" type="button" data-st-save="box">Guardar</button><button class="btn ghost" type="button" data-st-go="">Atrás</button></div>`;
+  if (step === "solo") b.innerHTML = `<p class="sub">Tú decides tus entrenos, como hasta ahora: en Semana o en Perfil eliges qué haces cada día. Yo te acompaño con el día a día, las comidas y lo que te falta.</p>
+      <div class="row actions"><button class="btn" type="button" data-st-save="solo">De acuerdo</button><button class="btn ghost" type="button" data-st-go="">Atrás</button></div>`;
+  b.dataset.step = step;
+}
+document.addEventListener("click", e => {
+  if (!S.profile) return;
+  const x = e.target.closest("[data-feel],[data-soft],[data-sess],[data-done-sess],[data-st],[data-st-go],[data-st-day],[data-st-save],[data-goto],[data-guide-back]"); if (!x) return;
+  const ds = x.dataset;
+  if (ds.feel !== undefined) { const d = getDay(today()); if (ds.feel) d.feel = ds.feel; else delete d.feel; return saveDay(d); }
+  if (ds.soft) { setSession(ds.soft, { type: "movilidad", min: 30 }); return toast("Hecho: hoy movilidad suave. Mañana más."); }
+  if (ds.sess) { if (sessSheet(ds.sess)) openSheet("sess"); return; }
+  if (ds.doneSess) {
+    const s = planned(ds.doneSess); if (s.unset || s.type === "descanso") return; const d = getDay(ds.doneSess);
+    d.acts.push({ id: uidGen(), type: s.type, min: s.min || 0, km: 0, kcal: 0, hr: 0, title: (s.title || "").slice(0, 60), src: "plan" }); closeSheets(); saveDay(d);
+    return toast("Entreno apuntado. ¡Bien hecho! Si tienes los datos del reloj, puedes añadirlos.");
+  }
+  if (ds.guideBack) { const d = getDay(ds.guideBack); delete d.session; closeSheets(); return saveDay(d); }
+  if (ds.goto) { setTimeout(() => { const el = document.getElementById(ds.goto); if (el) { el.hidden = false; el.scrollIntoView({ block: "center" }); } }, 300); return; }
+  if (ds.st) { const [k, v] = ds.st.split(":"); stDraft[k] = k === "kind" ? v : Number(v); return startSheet($("#start-body").dataset.step); }
+  if (ds.stGo !== undefined) return startSheet(ds.stGo);
+  if (ds.stDay) { const i = Number(ds.stDay), a = stDraft.days; stDraft.days = a.includes(i) ? a.filter(y => y !== i) : a.concat([i]); return startSheet("box"); }
+  if (ds.stSave) {
+    const p = clone(S.profile), D = stDraft; p.mode = ds.stSave;
+    if (p.mode === "guia") p.guide = { n: D.n, lvl: D.lvl, start: p.guide && p.guide.n === D.n && p.guide.lvl === D.lvl ? p.guide.start : monday(today()) }; else delete p.guide;
+    if (p.mode === "box") { if (!D.days.length) return toast("Marca al menos un día."); p.plan = "fija"; p.week = DOW.map((_, i) => D.days.includes(i) ? { type: D.kind, min: 60 } : { type: "descanso", min: 0 }); }
+    saveProfile(p); closeSheets();
+    return toast(p.mode === "guia" ? "Plan creado. En Hoy tienes la sesión de cada día." : p.mode === "box" ? "Guardado. Cada día de box, pásame la foto de la pizarra." : "Guardado.");
+  }
+});
+/* Foto de la pizarra del box o de la programación del día: la IA la lee y deja la sesión prevista con su explicación */
+document.addEventListener("change", async e => {
+  const inp = e.target; if (!inp.classList || !inp.classList.contains("wod-file")) return;
+  const f = inp.files && inp.files[0]; inp.value = ""; if (!f || !sample || !S.profile) return;
+  const date = S.date, say = (t, err) => { const m = $("#g-msg") || $("#w-msg"); if (m) { m.textContent = t; m.className = "msg" + (err ? " err" : ""); } else if (t) toast(t); };
+  say("Leyendo la pizarra…");
+  const prompt = `La imagen es la pizarra de un box, o la programación del día de un entrenador, con el entrenamiento de hoy (crossfit, híbrido, Hyrox, funcional o parecido). Léela y resúmela para alguien que va a hacerla.` +
+    `\nResponde solo con un objeto JSON, sin más texto: {"tipo": uno de ${JSON.stringify(Object.keys(TYPES).filter(k => k !== "descanso" && k !== "competicion"))}, "min": duración total estimada de la sesión en minutos, contando calentamiento y partes, "titulo": "nombre corto de la sesión", "partes": ["Calentamiento: …", "Fuerza: …", "WOD: …"], "explica": "una o dos frases: qué se trabaja y un consejo para regular el esfuerzo"}.` +
+    `\n"partes": como mucho 6, cada una en una línea corta y tal como viene escrita (no inventes ejercicios ni pesos). Si la duración no viene, estímala (una clase suele durar 60 minutos).` +
+    `\nSi la imagen no es un entrenamiento, responde {"error": "motivo breve"}.`;
+  try {
+    const r = await sample.json(prompt, { images: f, max: 900 });
+    if (!r || r.error || !TYPES[r.tipo]) return say((r && r.error) ? String(r.error).slice(0, 160) : "No he visto un entrenamiento en esa foto.", true);
+    const d = getDay(date), min = Math.min(Math.max(Math.round(Number(r.min) || 60), 10), 240);
+    d.session = { type: r.tipo, min, title: String(r.titulo || "").slice(0, 60), note: (Array.isArray(r.partes) ? r.partes : []).slice(0, 6).map(x => String(x).replace(/\s+/g, " ").slice(0, 160)).filter(Boolean).join("\n"), tip: String(r.explica || "").slice(0, 300), src: "foto" };
+    saveDay(d); toast("Pizarra leída: " + (d.session.title || TYPES[r.tipo].n) + ", " + min + "′. Ya tienes el día ajustado.");
+  } catch (err) { const c = err && err.code; if (AIOFF.includes(c)) { sample = null; canImg = false; showAi(); render(); } say(AIOFF.includes(c) ? "La ayuda de IA no está disponible ahora. Elige el entreno a mano." : AIERR[c] || "Ha fallado la conexión. Inténtalo otra vez.", true); }
+});
+
 /* ---------- Hojas: los formularios aparecen solo al pedirlos ---------- */
 function openSheet(n) {
   const d = $("#sh-" + n); if (!d) return;
@@ -3025,7 +3257,7 @@ function closeSheets() { document.querySelectorAll("dialog.sheet[open]").forEach
 function planSheet(date) {
   const s = planned(date);
   $("#sh-plan-t").textContent = "Entreno del " + shortDate(date);
-  $("#sh-plan-body").innerHTML = `<div class="row"><label class="fld wide">Tipo de entreno<select data-sess-type="${date}">${typeOpts(s.type, s.unset)}</select></label><label class="fld">Minutos<input type="text" inputmode="numeric" data-sess-min="${date}" value="${s.min || ""}"></label></div><p class="sub">Se guarda al cambiarlo y solo afecta a este día.</p>`;
+  $("#sh-plan-body").innerHTML = `<div class="row"><label class="fld wide">Tipo de entreno<select data-sess-type="${date}">${typeOpts(s.type, s.unset)}</select></label><label class="fld">Minutos<input type="text" inputmode="numeric" data-sess-min="${date}" value="${s.min || ""}"></label></div><p class="sub">Se guarda al cambiarlo y solo afecta a este día.</p>${S.profile.mode === "guia" && (S.days[date] || {}).session ? `<div class="row actions"><button class="btn ghost sm" type="button" data-guide-back="${date}">Volver a lo que marca mi plan</button></div>` : ""}`;
 }
 $("#f-manual").addEventListener("click", () => { mealFields(true); $("#f-name").focus(); });
 $("#sh-meal").addEventListener("close", () => { editMeal = null; if (mealMode === "plan") { mealMode = "day"; dietSheet(); openSheet("diet"); } }); // al terminar de añadir al plan se vuelve a él
@@ -3076,6 +3308,7 @@ document.addEventListener("click", e => {
     if (n === "diet") dietSheet();
     if (n === "rem") { $("#rem-form").reset(); $("#r-title").value = REMK.comida[1]; $("#r-msg").textContent = ""; remNote(); }
     if (n === "plan") planSheet(t.dataset.date || S.date);
+    if (n === "start") startSheet("");
     if (n === "ai") { if (!sample) return; rAi(); }
     if (n === "act") { $("#a-msg").textContent = ""; $("#a-msg").className = "msg"; if (!["#a-min", "#a-km", "#a-kcal", "#a-hr"].some(i => $(i).value)) $("#a-type").value = plannedOr($("#a-type").value); actFields(true); }
     openSheet(n);
