@@ -1,8 +1,9 @@
 /**
  * Elitepro · servidor de datos sobre una hoja de cálculo de Google.
  *
- * Va dentro de una hoja de cálculo (Extensiones > Apps Script) y solo puede tocar ESA hoja:
- * @OnlyCurrentDoc
+ * Es un proyecto de Apps Script SUELTO (script.google.com > Proyecto nuevo) que abre la hoja por su identificador, guardado en
+ * la propiedad `sheet_id`. Si se pone dentro de la hoja (Extensiones > Apps Script) también funciona, pero ahí Google servía
+ * mal las respuestas de la aplicación web: por eso se sacó fuera.
  * Además envía un único tipo de correo: el código para cambiar una contraseña olvidada, al correo de esa cuenta.
  *
  * Qué guarda: una fila por usuario con su correo, las fechas, el consentimiento que dio y sus
@@ -43,8 +44,9 @@ function bad_(key, code, max) {
 }
 
 /* ---------- la hoja ---------- */
+function ss_() { var id = props_().getProperty("sheet_id"); return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet(); }
 function sheet_(name) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet(), s = ss.getSheetByName(name);
+  var ss = ss_(), s = ss.getSheetByName(name);
   if (!s) {
     s = ss.insertSheet(name);
     var head = name === USERS ? HEAD_U : HEAD_I;
@@ -305,6 +307,24 @@ function autorizarPermisos() {
   Logger.log("Correo: quedan " + MailApp.getRemainingDailyQuota() + " envíos hoy.");
   Logger.log("Conexión exterior: " + UrlFetchApp.fetch("https://api.anthropic.com/", { muteHttpExceptions: true }).getResponseCode());
   Logger.log("IA: " + (aiOn_() ? "hay clave puesta." : "falta la clave (propiedad ai_key)."));
+  Logger.log("Hoja: " + ss_().getName());
+}
+
+/**
+ * Mudanza de un proyecto a otro (por ejemplo, del que iba dentro de la hoja al suelto): los ajustes y las llaves viven en las
+ * propiedades del proyecto y no se copian solos. `exportarAjustes` (en el proyecto viejo) los deja en una pestaña oculta de la
+ * hoja; `importarAjustes` (en el nuevo, con `sheet_id` ya puesto) los recoge y borra la pestaña. Nadie tiene que verlos ni copiarlos a mano.
+ */
+function exportarAjustes() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), sh = ss.getSheetByName("_ajustes") || ss.insertSheet("_ajustes"), all = props_().getProperties();
+  delete all.sheet_id; sh.hideSheet(); sh.getRange(1, 1).setNumberFormat("@").setValue(JSON.stringify(all));
+  Logger.log("Ajustes dejados en la hoja para la mudanza: " + Object.keys(all).filter(function (k) { return k.indexOf("ai_n:") !== 0; }).join(", "));
+}
+function importarAjustes() {
+  var ss = ss_(), sh = ss.getSheetByName("_ajustes"); if (!sh) { Logger.log("No hay ajustes que traer: ejecuta antes exportarAjustes en el proyecto viejo."); return; }
+  var all = JSON.parse(String(sh.getRange(1, 1).getValue())); delete all.sheet_id;
+  props_().setProperties(all, false); ss.deleteSheet(sh);
+  Logger.log("Ajustes traídos: " + Object.keys(all).filter(function (k) { return k.indexOf("ai_n:") !== 0; }).join(", ") + ". Hoja: " + ss.getName());
 }
 
 /**

@@ -28,7 +28,7 @@ class Sheet {
 }
 const sheets = {}, props = {}, cache = {}, stats = { slept: 0, busy: false, mail: [], ai: [] }, delay = { op: '', ms: 0 };
 const ctx = {
-  SpreadsheetApp: { flush() {}, getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = new Sheet(n)) }), getUi() { throw new Error('sin interfaz'); } },
+  SpreadsheetApp: { flush() {}, getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n] || null, insertSheet: n => (sheets[n] = new Sheet(n)) }), openById: () => { throw new Error('sin permiso'); }, getUi() { throw new Error('sin interfaz'); } },
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = String(v); }, deleteProperty: k => { delete props[k]; } }) },
   CacheService: { getScriptCache: () => ({ get: k => (cache[k] && cache[k].t > Date.now() ? cache[k].v : null), put: (k, v, s) => { cache[k] = { v, t: Date.now() + s * 1000 }; }, remove: k => { delete cache[k]; } }) },
   LockService: { getScriptLock: () => ({ waitLock() {}, tryLock: () => !stats.busy, releaseLock() {} }) },
