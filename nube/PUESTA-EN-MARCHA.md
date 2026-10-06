@@ -12,11 +12,11 @@ Tiempo: unos 15 minutos. Solo se hace una vez.
 ## Pasos
 
 1. **Crea la hoja.** En Google Drive: Nuevo → Hojas de cálculo de Google. Ponle de nombre `Elitepro – datos`. No la compartas con nadie, nunca.
-2. **Abre el editor.** En la hoja: Extensiones → Apps Script.
-3. **Pega el código.** Borra lo que haya en el editor, pega todo el contenido de `nube/Code.gs` y guarda (icono del disquete).
+2. **Crea el proyecto del servidor, suelto.** Entra en script.google.com → Proyecto nuevo y ponle de nombre `Elitepro servidor`. **No lo crees desde la hoja** (Extensiones → Apps Script): así Google sirve mal las respuestas y la mitad acaban en «No se puede abrir el archivo en estos momentos».
+3. **Pega el código y dile cuál es la hoja.** Borra lo que haya en el editor, pega todo el contenido de `nube/Code.gs` y guarda (icono del disquete). Después, en Configuración del proyecto (rueda dentada) → Propiedades de script, añade la propiedad `sheet_id` con el identificador de la hoja: es la parte larga de su dirección, entre `/d/` y `/edit`.
 4. **Prepara la hoja.** Arriba, en el desplegable de funciones, elige `prepararElitepro` y pulsa **Ejecutar**.
    - La primera vez Google pide permiso. Verás «Google no ha verificado esta aplicación»: es normal, la aplicación es tuya. Pulsa Configuración avanzada → Ir a (nombre del proyecto) → Permitir.
-   - El permiso que se concede es solo sobre **esta hoja**, no sobre el resto de tu Drive.
+   - Al ir suelto, Google no deja limitar el permiso a una sola hoja: pide acceso a las hojas de cálculo de la cuenta. Por eso conviene una cuenta de Google dedicada solo a esto.
    - Abajo, en «Registro de ejecución», aparece el **código de puesta en marcha**. Cópialo. Sirve una sola vez.
 5. **Publica el servicio.** Arriba a la derecha: Implementar → Nueva implementación → tipo **Aplicación web**.
    - Ejecutar como: **Yo**.
@@ -26,6 +26,10 @@ Tiempo: unos 15 minutos. Solo se hace una vez.
 7. **Crea tu llave de entrenador.** Abre `https://TU-WEB/panel.html`, pega el código de puesta en marcha y elige tu contraseña de entrenador (mínimo 12 caracteres). Apúntala en un sitio seguro.
 8. **Fija tu llave en la app.** El panel muestra la «huella de tu llave de entrenador» (16 caracteres). Ponla en `src/nube.json`, campo `kid`, ejecuta `python3 build.py` y sube los cambios. Desde ese momento la app solo cifra para tu llave: aunque alguien entrara en tu cuenta de Google, no podría colar la suya.
 9. **Invita.** En el panel, «Crear código». Cada código sirve para una cuenta.
+
+## Si hay que mudar el servidor a otro proyecto
+
+Las llaves y los ajustes viven en las propiedades del proyecto y no se copian solos. En el proyecto viejo ejecuta `exportarAjustes` (los deja en una pestaña oculta de la hoja); en el nuevo, con `sheet_id` ya puesto y los permisos concedidos, ejecuta `importarAjustes` (los recoge y borra la pestaña). Publica el nuevo, pon su URL en `src/nube.json` y sube los cambios. Las cuentas, las sesiones y la huella de tu llave siguen siendo las mismas.
 
 ## Si cambias el código más adelante
 

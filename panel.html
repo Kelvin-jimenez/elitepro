@@ -150,7 +150,7 @@ const EPC = (() => {
 })();
 
 (() => {
-const URL_ = "https://script.google.com/macros/s/AKfycbxC7omOAv3DiFLAZlx2U8BEhVq4TsFxbGeEiYlWuO9QPF3_2xl8GehuD6rsTko39nlF/exec", $ = s => document.querySelector(s);
+const URL_ = "https://script.google.com/macros/s/AKfycbxwN9Bj9MhqCqJ72ktAF3aw07XbVD7rkukeAqCLa4upvNxGuXfbh28PuMYQzyiAncX5/exec", $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const nf = (v, d = 0) => Number(v || 0).toLocaleString("es-ES", { minimumFractionDigits: d, maximumFractionDigits: d });
 const ERR = { credenciales: "Contraseña incorrecta.", codigo: "Ese código no vale. Ejecuta otra vez prepararElitepro en el editor para obtener uno nuevo.", espera: "Demasiados intentos. Espera unos minutos.", sesion: "La sesión ha caducado. Vuelve a entrar.", ocupado: "El servidor está ocupado. Espera un minuto e inténtalo otra vez.", lento: "El servidor está tardando demasiado. Espera un minuto e inténtalo otra vez." };
