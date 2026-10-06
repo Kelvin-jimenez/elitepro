@@ -58,6 +58,25 @@ try {
   await A.click('#c-tbl [data-del-food]'); await A.waitForTimeout(300); L = await local(A);
   ok('…y se pueden quitar', L.profile.foods.length === 1 && L.profile.foods[0].name === 'Bowl de Tania');
   await A.keyboard.press('Escape');
+  // ---- sólidos en gramos, líquidos en mililitros o litros
+  await openMeal(A, 'mer'); await A.fill('#f-name', 'leche semi'); await A.waitForTimeout(150);
+  ok('las bebidas se sugieren por 100 ml', /Leche semidesnatada\s*46 kcal · 100 ml/.test(await T(A, '#f-sug')), await T(A, '#f-sug'));
+  await A.click('#f-sug [data-food="Leche semidesnatada"]'); await A.waitForTimeout(150);
+  ok('al elegir un líquido la unidad pasa sola a ml (250 ml = 115 kcal)', await A.inputValue('#f-u') === 'ml' && await A.inputValue('#f-g') === '250' && await A.inputValue('#f-kcal') === '115');
+  await A.selectOption('#f-u', 'l'); await A.fill('#f-g', '1,5'); await A.waitForTimeout(150);
+  ok('en litros se recalcula (1,5 l = 690 kcal)', await A.inputValue('#f-kcal') === '690', await A.inputValue('#f-kcal'));
+  await A.click('#f-more'); await A.waitForTimeout(300);
+  ok('lo apuntado sale en litros a partir de 1 l', /Leche semidesnatada · 1,5 l/.test(await T(A, '#f-list')) && await A.inputValue('#f-u') === 'g', await T(A, '#f-list'));
+  await A.fill('#f-name', 'Paella mixta'); await A.waitForTimeout(150); ok('un sólido sigue en gramos', await A.inputValue('#f-u') === 'g' && await A.inputValue('#f-g') === '350');
+  await A.fill('#f-g', ''); await A.fill('#f-name', 'Aceite de oliva'); await A.waitForTimeout(150);
+  ok('el aceite va en ml y cuenta con que pesa menos que el agua (10 ml = 81 kcal)', await A.inputValue('#f-u') === 'ml' && await A.inputValue('#f-g') === '10' && await A.inputValue('#f-kcal') === '81', await A.inputValue('#f-kcal'));
+  await A.fill('#f-name', 'Batido casero'); await A.selectOption('#f-u', 'ml'); await A.fill('#f-g', '300'); await A.fill('#f-kcal', '210'); await A.fill('#f-p', '20'); await A.click('#f-submit'); await A.waitForTimeout(400); L = await local(A);
+  const leche = Object.values(L.days).flatMap(d => d.meals).find(m => m.name === 'Leche semidesnatada'), bat = (L.profile.foods || []).find(f => f.name === 'Batido casero');
+  ok('se guarda la cantidad en ml y el plato propio recuerda que es líquido', leche && leche.g === 1500 && leche.u === 'ml' && bat && bat.u === 'ml' && bat.g === 300, JSON.stringify([leche, bat]));
+  await go(A, '#hoy'); ok('Hoy enseña «1,5 l» y «300 ml», no gramos', /1,5 l/.test(await T(A, '#d-meals')) && /300 ml/.test(await T(A, '#d-meals')), (await T(A, '#d-meals')).slice(0, 300));
+  await openMeal(A, 'cen'); await A.fill('#f-name', 'batido cas'); await A.waitForTimeout(150); await A.click('#f-sug [data-food="Batido casero"]'); await A.waitForTimeout(150);
+  ok('al volver a elegir el plato líquido propio, sale en ml', await A.inputValue('#f-u') === 'ml' && await A.inputValue('#f-g') === '300' && await A.inputValue('#f-kcal') === '210');
+  await A.keyboard.press('Escape'); await A.waitForTimeout(200);
   // ---- IA: sin cuenta no hay; con cuenta y clave en el servidor, sí
   await go(A, '#hoy'); ok('sin cuenta: no hay asistente y la IA pide entrar', !(await A.isVisible('.aibar')));
   await A.click('#nut-card [data-sheet="meal"]'); await A.waitForTimeout(200); await A.click('#f-ai'); ok('…«Calcular con IA» dice que hace falta la cuenta', /entra en tu cuenta/.test(await T(A, '#f-msg')) && /Con tu cuenta en la nube/.test(await T(A, '#f-choices')), await T(A, '#f-msg')); await A.keyboard.press('Escape');

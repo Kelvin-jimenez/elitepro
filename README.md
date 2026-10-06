@@ -38,6 +38,7 @@ Los formularios (comida, entreno, peso, glucosa, competición, entreno previsto)
 ## Buscador, «mis platos» y asistente
 
 - **Buscar al escribir**: en «Qué has comido» salen sugerencias de una lista de más de 300 alimentos y platos (sin tildes, con las palabras en cualquier orden). Al elegir una se rellenan la ración y los macros.
+- **Sólidos en gramos, líquidos en mililitros**: la cantidad lleva unidad (g, ml o l). Al elegir una bebida o un líquido pasa sola a ml; a partir de 1 l se enseña en litros. En los datos, `u: "ml"` en una comida dice que `g` son mililitros.
 - **Mis platos** (`profile.foods`): lo que se apunta a mano y no está en la lista se recuerda (casilla marcada por defecto) y la próxima vez sale al buscarlo, marcado como «Tuyo». Varias cosas de un mismo momento del día se pueden guardar juntas como un plato. Se quitan desde «Buscar en la lista».
 - **Plan pautado desde un documento**: en «Tu plan pautado», «Leer mi plan de una foto o un PDF» manda el archivo al modelo, que lo pasa a comidas con cantidades y macros (con «Deshacer»). Fotos y capturas en todas partes; PDF solo en la web, donde va tal cual como documento, sin OCR.
 - **Asistente** (`sample`): se le escribe o se le manda una foto y apunta comidas y entrenos (con «Deshacer»), y contesta dudas del día con el contexto de la semana. Dentro de Claude usa la IA de quien abre la app; en la web pasa por el servidor (operación `ai`) con la clave de la API de Anthropic guardada allí. No recibe datos de salud y la conversación no se guarda.

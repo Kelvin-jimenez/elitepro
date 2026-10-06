@@ -184,6 +184,7 @@ dl.kv .over dd{color:var(--crit)}
 .aiform{display:flex;gap:8px;align-items:flex-end}
 .aiform textarea{flex:1 1 auto;min-width:0;resize:none;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:48px;color:var(--ink);font:inherit}
 .aiform textarea:focus{outline:0;border-color:var(--mark)}.aiform .icon-btn{flex:0 0 auto;width:48px;height:48px;display:grid;place-items:center}.aiform .icon-btn[hidden]{display:none}
+.row>.fld.qtyf{flex:1 1 124px}.qty{display:flex;gap:6px}.qty input{flex:1 1 auto;min-width:0;padding-left:10px;padding-right:6px}.qty select{flex:0 0 auto;width:auto;min-width:58px;padding-left:8px;padding-right:2px}
 .sug{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-2)}
 .sug button{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;padding:8px 14px;background:none;border:0;border-top:1px solid var(--line);color:var(--ink);font:inherit;font-size:.95rem;text-align:left;cursor:pointer}
 .sug button:first-child{border-top:0}.sug button:hover,.sug button:focus-visible{background:color-mix(in srgb,var(--mark) 14%,transparent);outline:0}
@@ -653,7 +654,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
       <div class="row">
         <label class="fld mid">Momento<select id="f-slot"></select></label>
         <label class="fld wide">Qué has comido<input id="f-name" type="text" placeholder="Busca o escribe: pollo, paella, mi desayuno…" aria-controls="f-sug" aria-autocomplete="list"></label>
-        <label class="fld">Gramos<input id="f-g" type="text" inputmode="decimal" placeholder="150"></label>
+        <label class="fld qtyf">Cantidad<span class="qty"><input id="f-g" type="text" inputmode="decimal" placeholder="150" aria-label="Cantidad"><select id="f-u" aria-label="Unidad"><option value="g">g</option><option value="ml">ml</option><option value="l">l</option></select></span></label>
       </div>
       <div id="f-sug" class="sug" role="listbox" aria-label="Alimentos y platos que coinciden" hidden></div>
       <div class="four">
@@ -693,7 +694,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
   <div class="sheet-head"><h2 id="sh-calc-t">Cuánto tiene cada alimento</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div class="row">
     <label class="fld wide">Alimento o plato<input id="c-q" type="text" placeholder="arroz, paella, bocadillo…" autocomplete="off"></label>
-    <label class="fld">Gramos<input id="c-g" type="text" inputmode="decimal" value="100"></label>
+    <label class="fld">Gramos o ml<input id="c-g" type="text" inputmode="decimal" value="100"></label>
   </div>
   <div class="tbl-wrap"><table id="c-tbl" class="calc"></table></div>
   <p id="c-note" class="sub"></p>
@@ -955,8 +956,14 @@ const FOODS = [
   ["Proteína vegetal (polvo)", 380, 75, 6, 6, 30, 1, 3], ["Caseína (polvo)", 365, 80, 4, 2, 30, 3, 0], ["Batido de proteínas listo para beber", 50, 7.5, 3.5, 0.7, 330, 3, 0],
 ];
 /* «Mis platos»: lo que cada persona apunta a mano y la app recuerda (`profile.foods`). Con gramos se escala como los de la lista; sin gramos vale por una ración. */
+/* Los líquidos se miden en mililitros (en litros a partir de 1 l) y los sólidos en gramos. En una comida, `u: "ml"` dice que `g` son mililitros.
+   Las bebidas de la lista se dan por 100 ml; el aceite pesa menos que el agua y se corrige con su densidad. */
+const LIQ = /^(leche|bebida|zumo|batido|cafe|infusion|refresco|cerveza|vino|caldo|sopa|gazpacho|salmorejo|kefir|crema de verduras|crema de calabaza|agua)\b/;
+const liqDens = name => { const n = plain(name); return /polvo/.test(n) ? 0 : /^aceite/.test(n) ? 0.92 : LIQ.test(n) ? 1 : 0; };
+const rowUnit = f => (f[8] ? f[9] === "ml" : liqDens(f[0]) > 0) ? "ml" : "g";
+const qtyTxt = (g, u) => !(g > 0) ? "" : u === "ml" ? (g >= 1000 ? String(Math.round(g / 10) / 100).replace(".", ",") + " l" : nf(g) + " ml") : nf(g) + " g";
 const myFoods = () => (S.profile && Array.isArray(S.profile.foods) ? S.profile.foods : []);
-const mineRow = m => { const k = m.g > 0 ? 100 / m.g : 1; return [m.name, m.kcal * k, (m.p || 0) * k, (m.c || 0) * k, (m.f || 0) * k, m.g > 0 ? m.g : 0, (m.az || 0) * k, (m.fi || 0) * k, m.id]; };
+const mineRow = m => { const k = m.g > 0 ? 100 / m.g : 1; return [m.name, m.kcal * k, (m.p || 0) * k, (m.c || 0) * k, (m.f || 0) * k, m.g > 0 ? m.g : 0, (m.az || 0) * k, (m.fi || 0) * k, m.id, m.u === "ml" ? "ml" : "g"]; };
 const findFood = name => { const k = plain(name).trim(); if (!k) return undefined; const m = myFoods().find(x => plain(x.name) === k); return m ? mineRow(m) : FOODS.find(f => plain(f[0]) === k); };
 /* Busca sin tildes ni mayúsculas y con las palabras en cualquier orden; primero lo que empieza igual y los platos propios */
 function searchFoods(q) {
@@ -971,7 +978,7 @@ function searchFoods(q) {
 function keepFood(rec) {
   if (!S.profile || !rec.name) return false;
   const p = clone(S.profile), k = plain(rec.name), list = (p.foods || []).filter(x => plain(x.name) !== k);
-  list.push({ id: uidGen(), name: String(rec.name).slice(0, 60), g: rec.g > 0 ? rec.g : 0, kcal: Math.round(rec.kcal) || 0, p: rec.p || 0, c: rec.c || 0, f: rec.f || 0, az: rec.az || 0, fi: rec.fi || 0 });
+  list.push({ id: uidGen(), name: String(rec.name).slice(0, 60), g: rec.g > 0 ? rec.g : 0, u: rec.u === "ml" && rec.g > 0 ? "ml" : undefined, kcal: Math.round(rec.kcal) || 0, p: rec.p || 0, c: rec.c || 0, f: rec.f || 0, az: rec.az || 0, fi: rec.fi || 0 });
   p.foods = list.slice(-150); saveProfile(p); return true;
 }
 
@@ -1283,7 +1290,7 @@ function rHoy() {
       const kc = ms.reduce((x, m) => x + m.kcal, 0), hc = ms.reduce((x, m) => x + (m.c || 0), 0), overL = hl.cond && hl.hcMeal > 0 && hc > hl.hcMeal;
       return `<details class="slot" data-slot="${k}" ${openSlots.has(k) ? "open" : ""}><summary><span>${n}${overL ? ` <span class="chip bad">Supera tu límite</span>` : ""}</span><span class="slot-r"><span class="num"><b>${nf(kc)}</b> kcal${hl.cond ? ` · ${nf(hc)} g HC (${rac(hc)} rac.)` : ""}</span>${add}</span></summary>
         <ul class="meals">${ms.map(m => `<li>
-          <span>${esc(m.name)}${m.g ? ` <span class="num" style="color:var(--muted)">${nf(m.g)} g</span>` : ""}${m.ia ? ` <span class="chip">IA</span>` : ""}</span>
+          <span>${esc(m.name)}${m.g ? ` <span class="num" style="color:var(--muted)">${qtyTxt(m.g, m.u)}</span>` : ""}${m.ia ? ` <span class="chip">IA</span>` : ""}</span>
           <span class="kc num">${nf(m.kcal)}</span>
           <button class="btn ghost sm" type="button" data-edit-meal="${esc(m.id)}">Editar</button>
           <button class="icon-btn" type="button" data-del-meal="${esc(m.id)}" aria-label="Borrar ${esc(m.name)}">×</button>
@@ -1683,7 +1690,7 @@ function openMeal(id, slot, mode) {
   editMeal = m ? m.id : null; aiMeal = !!(m && m.ia);
   $("#sh-meal-t").textContent = m ? "Editar comida" : mealMode === "plan" ? "Añadir al plan" : "Añadir comida"; $("#f-submit").textContent = m ? "Guardar cambios" : "Añadir";
   $("#f-choices").hidden = !!m || mealMode === "plan"; $("#f-more").hidden = !!m;
-  $("#f-slot").value = m ? m.slot : slot || defaultSlot(); $("#f-name").value = m ? m.name : ""; $("#f-g").value = m ? sv(m.g) : "";
+  $("#f-slot").value = m ? m.slot : slot || defaultSlot(); $("#f-name").value = m ? m.name : ""; const big = !!m && m.u === "ml" && m.g >= 1000; $("#f-u").value = m && m.u === "ml" ? (big ? "l" : "ml") : "g"; $("#f-g").value = m ? sv(big ? m.g / 1000 : m.g) : "";
   $("#f-kcal").value = m ? String(m.kcal) : ""; $("#f-p").value = m ? sv(m.p) : ""; $("#f-c").value = m ? sv(m.c) : ""; $("#f-f").value = m ? sv(m.f) : ""; $("#f-az").value = m ? sv(m.az) : ""; $("#f-fi").value = m ? sv(m.fi) : "";
   $("#f-msg").textContent = ""; $("#f-msg").className = "msg"; mealFields(!!m || !!slot || mealMode === "plan"); mealList(); openSheet("meal");
   macroTouched = false; $("#f-keep").checked = !m; $("#f-sug").hidden = true; rKeep();
@@ -1694,10 +1701,10 @@ function rSug() {
   let list = q ? searchFoods(q).slice(0, 8) : myFoods().slice(-6).reverse().map(mineRow);
   if (hit && list.length === 1) list = []; // ya está elegido
   box.hidden = !list.length && !(q.length >= 3 && !hit);
-  box.innerHTML = list.length ? list.map(f => `<button type="button" role="option" data-food="${esc(f[0])}"><span>${esc(f[0])}${f[8] ? `<span class="mine">Tuyo</span>` : ""}</span><span class="num">${nf(f[1])} kcal · ${f[5] ? "100 g" : "ración"}</span></button>`).join("")
+  box.innerHTML = list.length ? list.map(f => `<button type="button" role="option" data-food="${esc(f[0])}"><span>${esc(f[0])}${f[8] ? `<span class="mine">Tuyo</span>` : ""}</span><span class="num">${nf(f[1] * (rowUnit(f) === "ml" && !f[8] ? liqDens(f[0]) : 1))} kcal · ${f[5] ? "100 " + rowUnit(f) : "ración"}</span></button>`).join("")
     : `<p>No está en la lista. Pon tú las calorías${sample ? " o usa Calcular con IA" : ""} y la app lo recordará para la próxima vez.</p>`;
 }
-function pickFood(name) { $("#f-name").value = name; $("#f-g").value = ""; fromTable(true); $("#f-sug").hidden = true; rKeep(); const g = $("#f-g"); g.focus(); g.select(); }
+function pickFood(name) { $("#f-name").value = name; $("#f-g").value = ""; $("#f-u").value = "g"; fromTable(true); $("#f-sug").hidden = true; rKeep(); const g = $("#f-g"); g.focus(); g.select(); }
 /* La casilla de recordar el plato sale cuando lo escrito no es de la lista, o es un plato propio al que se le han cambiado los valores */
 function rKeep() {
   const name = $("#f-name").value.trim(), k = plain(name), mine = myFoods().find(x => plain(x.name) === k), builtin = FOODS.some(f => plain(f[0]) === k);
@@ -1711,7 +1718,7 @@ function mealList() {
   const items = mealMode === "plan" ? (((diet() || {}).slots || {})[k] || []) : ((S.days[S.date] || {}).meals || []).filter(m => m.slot === k && m.id !== editMeal);
   box.hidden = !items.length; mealList.items = items; if (!items.length) return;
   const t = items.reduce((a, x) => ({ kcal: a.kcal + (x.kcal || 0), p: a.p + (x.p || 0), c: a.c + (x.c || 0), f: a.f + (x.f || 0) }), { kcal: 0, p: 0, c: 0, f: 0 });
-  box.innerHTML = `<div class="eyebrow">${mealMode === "plan" ? "En el plan, en" : "Ya llevas en"} ${esc(name)}</div><ul>${items.map(m => `<li><span>${esc(m.name)}${m.g ? " · " + nf(m.g) + " g" : ""}</span><span class="num">${nf(m.kcal)} kcal</span></li>`).join("")}</ul><p class="mtot num">Suma: <b>${nf(t.kcal)} kcal</b> · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g</p>` +
+  box.innerHTML = `<div class="eyebrow">${mealMode === "plan" ? "En el plan, en" : "Ya llevas en"} ${esc(name)}</div><ul>${items.map(m => `<li><span>${esc(m.name)}${m.g ? " · " + qtyTxt(m.g, m.u) : ""}</span><span class="num">${nf(m.kcal)} kcal</span></li>`).join("")}</ul><p class="mtot num">Suma: <b>${nf(t.kcal)} kcal</b> · P ${nf(t.p)} · H ${nf(t.c)} · G ${nf(t.f)} g</p>` +
     (items.length > 1 && S.profile ? `<details><summary>Guardar todo esto como un plato mío</summary><div class="row"><input id="f-combo-n" type="text" maxlength="60" placeholder="Ponle nombre: mi ${esc(name)} de siempre" aria-label="Nombre del plato"><button class="btn ghost sm" type="button" id="f-combo-ok">Guardar plato</button></div></details>` : "");
 }
 /* Varias cosas apuntadas en un momento del día se pueden guardar juntas como un solo plato */
@@ -1719,16 +1726,17 @@ function saveCombo() {
   const inp = $("#f-combo-n"), name = inp ? inp.value.trim() : "", items = mealList.items || [], msg = $("#f-msg");
   if (!name) { if (inp) inp.focus(); msg.textContent = "Ponle un nombre al plato."; msg.className = "msg err"; return; }
   const sum = k => Math.round(items.reduce((a, x) => a + (x[k] || 0), 0) * 10) / 10;
-  keepFood({ name, g: items.every(x => x.g > 0) ? sum("g") : 0, kcal: sum("kcal"), p: sum("p"), c: sum("c"), f: sum("f"), az: sum("az"), fi: sum("fi") });
+  keepFood({ name, g: items.every(x => x.g > 0) ? sum("g") : 0, u: items.every(x => x.u === "ml") ? "ml" : undefined, kcal: sum("kcal"), p: sum("p"), c: sum("c"), f: sum("f"), az: sum("az"), fi: sum("fi") });
   mealList(); msg.textContent = "Guardado «" + name + "» en tus platos. La próxima vez búscalo por su nombre y se apunta entero."; msg.className = "msg";
 }
 $("#f-list").addEventListener("click", e => { if (e.target.id === "f-combo-ok") saveCombo(); });
 $("#f-list").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "f-combo-n") { e.preventDefault(); saveCombo(); } });
 function fromTable(setGrams) {
   const f = findFood($("#f-name").value); if (!f) return;
-  const gEl = $("#f-g"); if (!f[5] && !setGrams) return; // plato propio sin gramos: una ración, no se escala
-  if (f[5] && setGrams && !(num(gEl.value) > 0)) gEl.value = String(f[5]).replace(".", ",");
-  const g = f[5] ? num(gEl.value) : 100; if (!(g > 0)) return;
+  const gEl = $("#f-g"), uEl = $("#f-u"), unit = rowUnit(f); if (!f[5] && !setGrams) return; // plato propio sin gramos: una ración, no se escala
+  if (f[5] && setGrams && !(num(gEl.value) > 0)) { const big = unit === "ml" && f[5] >= 1000; uEl.value = big ? "l" : unit; gEl.value = String(big ? f[5] / 1000 : f[5]).replace(".", ","); } // la unidad sale sola: ml si es líquido, g si es sólido
+  else if (f[5] && setGrams && unit === "ml" && uEl.value === "g") uEl.value = "ml";
+  const q = num(gEl.value) * (uEl.value === "l" ? 1000 : 1), g = !f[5] ? 100 : !f[8] && unit === "ml" && uEl.value !== "g" ? q * liqDens(f[0]) : q; if (!(g > 0)) return;
   const r = (v, d) => String(Math.round(v * g / 100 * d) / d).replace(".", ",");
   $("#f-kcal").value = r(f[1], 1); $("#f-p").value = r(f[2], 10); $("#f-c").value = r(f[3], 10); $("#f-f").value = r(f[4], 10); $("#f-az").value = r(f[6], 10); $("#f-fi").value = r(f[7], 10);
   aiMeal = false; macroTouched = false; $("#f-msg").textContent = ""; $("#f-msg").className = "msg";
@@ -1736,6 +1744,7 @@ function fromTable(setGrams) {
 $("#f-name").addEventListener("input", () => { fromTable(true); rSug(); rKeep(); });
 $("#f-name").addEventListener("focus", rSug);
 $("#f-g").addEventListener("input", () => { fromTable(false); rKeep(); });
+$("#f-u").addEventListener("change", () => { fromTable(false); rKeep(); });
 ["#f-kcal", "#f-p", "#f-c", "#f-f", "#f-az", "#f-fi"].forEach(i => $(i).addEventListener("input", () => { macroTouched = true; rKeep(); }));
 $("#f-sug").addEventListener("click", e => { const b = e.target.closest("[data-food]"); if (b) pickFood(b.dataset.food); });
 document.addEventListener("click", e => {
@@ -1749,12 +1758,12 @@ function addMeal(stay) {
   const name = $("#f-name").value.trim(), kraw = $("#f-kcal").value.trim(), kcal = num(kraw), msg = $("#f-msg");
   if (!stay && !name && !kraw && mealAdded) return closeSheets(); // ya añadió lo que quería: solo cerrar
   if (!name || !(kcal >= 0)) { msg.textContent = sample ? "Pon qué has comido y sus calorías, o pulsa Calcular con IA." : "Pon qué es y sus calorías, o elígelo de la lista."; msg.className = "msg err"; return; }
-  const v = id => { const n = num($(id).value); return n > 0 ? n : 0; };
-  const rec = { id: editMeal || uidGen(), slot: $("#f-slot").value, name, g: v("#f-g"), kcal: Math.round(kcal), p: v("#f-p"), c: v("#f-c"), f: v("#f-f"), az: v("#f-az"), fi: v("#f-fi"), ia: aiMeal };
+  const v = id => { const n = num($(id).value); return n > 0 ? n : 0; }, unit = $("#f-u").value, amount = Math.round(v("#f-g") * (unit === "l" ? 1000 : 1) * 10) / 10;
+  const rec = { id: editMeal || uidGen(), slot: $("#f-slot").value, name, g: amount, kcal: Math.round(kcal), p: v("#f-p"), c: v("#f-c"), f: v("#f-f"), az: v("#f-az"), fi: v("#f-fi"), ia: aiMeal }; if (unit !== "g" && amount > 0) rec.u = "ml";
   let edited = false; const keep = !$("#f-keep-box").hidden && $("#f-keep").checked;
   if (mealMode === "plan") {
     const dp = clone(diet() || { by: "", slots: {} }); dp.slots = dp.slots || {};
-    (dp.slots[rec.slot] = dp.slots[rec.slot] || []).push({ id: rec.id, name: rec.name, g: rec.g, kcal: rec.kcal, p: rec.p, c: rec.c, f: rec.f });
+    (dp.slots[rec.slot] = dp.slots[rec.slot] || []).push(Object.assign({ id: rec.id, name: rec.name, g: rec.g, kcal: rec.kcal, p: rec.p, c: rec.c, f: rec.f }, rec.u ? { u: rec.u } : {}));
     saveDiet(dp);
   } else {
     const d = getDay(S.date), ix = editMeal ? d.meals.findIndex(m => m.id === editMeal) : -1; edited = ix >= 0;
@@ -1762,7 +1771,7 @@ function addMeal(stay) {
     openSlots.add(rec.slot); saveDay(d);
   }
   ["#f-name", "#f-g", "#f-kcal", "#f-p", "#f-c", "#f-f", "#f-az", "#f-fi"].forEach(i => { $(i).value = ""; });
-  aiMeal = false; editMeal = null; mealAdded++; macroTouched = false; $("#f-keep").checked = true; $("#f-sug").hidden = true;
+  aiMeal = false; editMeal = null; mealAdded++; macroTouched = false; $("#f-keep").checked = true; $("#f-sug").hidden = true; $("#f-u").value = "g";
   const kept = keep && keepFood(rec); rKeep();
   if (stay) { msg.textContent = "Añadido: " + rec.name + (kept ? " (guardado en tus platos)" : "") + ". Sigue con el siguiente."; msg.className = "msg"; mealList(); $("#f-name").focus(); return; }
   msg.textContent = ""; msg.className = "msg";
@@ -1793,7 +1802,7 @@ function dietSheet() {
     (sample ? `<div class="dread"><span class="btn fileb">Leer mi plan de una foto${sample.web ? " o un PDF" : ""}<input id="dt-file" type="file" accept="image/*${sample.web ? ",application/pdf" : ""}" multiple aria-label="Foto o PDF de tu plan de nutrición"></span><p class="sub">La IA lee el documento y rellena el plan por ti${diet() ? " (sustituye al que hay)" : ""}. Si trae datos personales o de salud que no quieras compartir, recórtalos antes.</p></div>` : "") +
     SLOTS.map(([k, n]) => {
       const it = (d.slots && d.slots[k]) || [], kc = it.reduce((a, x) => a + (x.kcal || 0), 0);
-      return `<div class="dslot"><div class="dslot-h"><b>${n}</b><span class="num sub">${it.length ? nf(kc) + " kcal" : ""}</span><button class="btn ghost sm" type="button" data-add-slot="${k}" data-mode="plan">+ Añadir</button></div>${it.length ? `<ul class="meals">${it.map(m => `<li><span>${esc(m.name)}${m.g ? ` <span class="num" style="color:var(--muted)">${nf(m.g)} g</span>` : ""}</span><span class="kc num">${nf(m.kcal)}</span><span></span><button class="icon-btn" type="button" data-del-diet="${esc(m.id)}" aria-label="Quitar ${esc(m.name)}">×</button><small class="num">P ${nf(m.p)} · H ${nf(m.c)} · G ${nf(m.f)} g</small></li>`).join("")}</ul>` : ""}</div>`;
+      return `<div class="dslot"><div class="dslot-h"><b>${n}</b><span class="num sub">${it.length ? nf(kc) + " kcal" : ""}</span><button class="btn ghost sm" type="button" data-add-slot="${k}" data-mode="plan">+ Añadir</button></div>${it.length ? `<ul class="meals">${it.map(m => `<li><span>${esc(m.name)}${m.g ? ` <span class="num" style="color:var(--muted)">${qtyTxt(m.g, m.u)}</span>` : ""}</span><span class="kc num">${nf(m.kcal)}</span><span></span><button class="icon-btn" type="button" data-del-diet="${esc(m.id)}" aria-label="Quitar ${esc(m.name)}">×</button><small class="num">P ${nf(m.p)} · H ${nf(m.c)} · G ${nf(m.f)} g</small></li>`).join("")}</ul>` : ""}</div>`;
     }).join("") +
     (tot && tot.n ? `<p class="dtot num">Total del plan: <b>${nf(tot.kcal)} kcal</b> · P ${nf(tot.p)} · H ${nf(tot.c)} · G ${nf(tot.f)} g</p>`
       : `<details class="how" ${mt.kcal > 0 ? "open" : ""}><summary>No tengo el detalle: poner solo los totales del día</summary><div class="four" style="padding-top:10px"><label class="fld">Kcal<input id="dt-kcal" type="text" inputmode="decimal" value="${sv(mt.kcal)}"></label><label class="fld">Proteína (g)<input id="dt-p" type="text" inputmode="decimal" value="${sv(mt.p)}"></label><label class="fld">Hidratos (g)<input id="dt-c" type="text" inputmode="decimal" value="${sv(mt.c)}"></label><label class="fld">Grasa (g)<input id="dt-f" type="text" inputmode="decimal" value="${sv(mt.f)}"></label></div><div class="row actions" style="padding-top:10px"><button class="btn ghost sm" type="button" id="dt-save">Guardar totales</button></div></details>`) +
@@ -1811,17 +1820,17 @@ document.addEventListener("change", async e => {
   say("Leyendo tu plan… puede tardar hasta un minuto."); document.querySelectorAll("#dt-file").forEach(i => { i.disabled = true; });
   const prompt = `Lee el plan de nutrición que aparece en ${opts.docs ? "el documento" : files.length > 1 ? "las imágenes" : "la imagen"}. Es el plan que un profesional le ha pautado a una persona. Pásalo a datos.` +
     `\n- Reparte los alimentos por momento del día: ${SLOTS.map(x => x[0] + " = " + x[1].toLowerCase()).join(", ")}.` +
-    `\n- Por cada alimento o plato: nombre corto en español, gramos (si viene en unidades, cucharadas, tazas o rebanadas, conviértelo a gramos aproximados), kcal, proteína, hidratos y grasa. Si el plan no da calorías o macros, estímalos tú a partir de la cantidad.` +
+    `\n- Por cada alimento o plato: nombre corto en español, cantidad en gramos, o en mililitros si es una bebida o un líquido (si viene en unidades, cucharadas, tazas, vasos o rebanadas, conviértelo de forma aproximada), kcal, proteína, hidratos y grasa. Si el plan no da calorías o macros, estímalos tú a partir de la cantidad.` +
     `\n- Si el plan da varias opciones para una misma comida, o menús distintos según el día, coge SOLO la primera opción o el primer día completo y dilo en "nota".` +
     `\n- Si el documento dice el total del día (kcal y macros), ponlo en "tot"; si no, "tot": null.` +
     `\n- No copies datos personales ni de salud que aparezcan en el documento.` +
-    `\nResponde solo con un objeto JSON, sin más texto: {"by": "nombre del profesional o del centro si aparece, o cadena vacía", "slots": {${SLOTS.map(x => `"${x[0]}": [{"name": "…", "g": 0, "kcal": 0, "p": 0, "c": 0, "f": 0}]`).join(", ")}}, "tot": {"kcal": 0, "p": 0, "c": 0, "f": 0}, "nota": "una frase con lo que has supuesto"}.` +
+    `\nResponde solo con un objeto JSON, sin más texto: {"by": "nombre del profesional o del centro si aparece, o cadena vacía", "slots": {${SLOTS.map(x => `"${x[0]}": [{"name": "…", "g": 0, "u": "g o ml", "kcal": 0, "p": 0, "c": 0, "f": 0}]`).join(", ")}}, "tot": {"kcal": 0, "p": 0, "c": 0, "f": 0}, "nota": "una frase con lo que has supuesto"}.` +
     `\nSi no es un plan de alimentación o no se puede leer, responde {"error": "motivo breve"}.`;
   try {
     const r = await sample.json(prompt, opts), n = v => { v = Number(v); return v > 0 && isFinite(v) ? Math.round(v * 10) / 10 : 0; };
     if (!r || r.error || typeof r.slots !== "object" && !r.tot) { dietSheet(); return say((r && r.error) ? String(r.error).slice(0, 200) : "No he visto un plan de nutrición ahí. Prueba con una foto más nítida.", true); }
     const d = { by: String(r.by || (diet() || {}).by || "").slice(0, 60), slots: {} }; let items = 0, kcal = 0;
-    SLOTS.forEach(([k]) => { const list = (Array.isArray((r.slots || {})[k]) ? r.slots[k] : []).filter(x => x && x.name && Number(x.kcal) >= 0 && Number(x.kcal) <= 3000).slice(0, 15).map(x => ({ id: uidGen(), name: String(x.name).slice(0, 80), g: Math.min(n(x.g), 3000), kcal: Math.round(n(x.kcal)), p: n(x.p), c: n(x.c), f: n(x.f) })); if (list.length) { d.slots[k] = list; items += list.length; kcal += list.reduce((a, x) => a + x.kcal, 0); } });
+    SLOTS.forEach(([k]) => { const list = (Array.isArray((r.slots || {})[k]) ? r.slots[k] : []).filter(x => x && x.name && Number(x.kcal) >= 0 && Number(x.kcal) <= 3000).slice(0, 15).map(x => Object.assign({ id: uidGen(), name: String(x.name).slice(0, 80), g: Math.min(n(x.g), 3000), kcal: Math.round(n(x.kcal)), p: n(x.p), c: n(x.c), f: n(x.f) }, x.u === "ml" && n(x.g) > 0 ? { u: "ml" } : {})); if (list.length) { d.slots[k] = list; items += list.length; kcal += list.reduce((a, x) => a + x.kcal, 0); } });
     const t = r.tot || {}; if (!items && Number(t.kcal) >= 500 && Number(t.kcal) <= 8000) d.tot = { kcal: Math.round(n(t.kcal)), p: Math.round(n(t.p)), c: Math.round(n(t.c)), f: Math.round(n(t.f)) };
     if (!items && !d.tot) { dietSheet(); return say("He leído el documento, pero no he encontrado comidas ni totales que apuntar.", true); }
     dietPrev = diet() ? clone(diet()) : null; saveDiet(d); dietSheet();
@@ -1907,14 +1916,14 @@ async function estimateMeal(file) {
   const prompt = `Eres dietista. Estima las calorías y los macronutrientes de ${file ? "la comida que aparece en la foto" : "esta comida"}.` +
     (text ? `\nLo que dice la persona: "${text.slice(0, 400)}".` : "") + (g > 0 ? `\nPeso total indicado: ${g} g.` : "") +
     `\nSi no se dan cantidades, supón raciones normales de un adulto en España.` +
-    `\nResponde solo con un objeto JSON, sin más texto: {"name": "nombre corto en español", "g": gramos totales aproximados, "kcal": número, "p": gramos de proteína, "c": gramos de hidratos, "f": gramos de grasa, "az": gramos de azúcares, "fi": gramos de fibra, "nota": "una frase con las cantidades que has supuesto"}.` +
+    `\nResponde solo con un objeto JSON, sin más texto: {"name": "nombre corto en español", "g": cantidad total aproximada (gramos, o mililitros si es una bebida o un líquido), "u": "g" o "ml", "kcal": número, "p": gramos de proteína, "c": gramos de hidratos, "f": gramos de grasa, "az": gramos de azúcares, "fi": gramos de fibra, "nota": "una frase con las cantidades que has supuesto"}.` +
     `\nSi no hay comida que reconocer, responde {"error": "motivo breve"}.`;
   try {
     const r = await sample.json(prompt, file ? { images: file } : {});
     if (!r || r.error || !(Number(r.kcal) >= 0)) { msg.textContent = (r && r.error) ? String(r.error) : "No he reconocido la comida. Descríbela con palabras."; msg.className = "msg err"; return; }
     const s = (v, d = 1) => String(Math.round((Number(v) || 0) * d) / d).replace(".", ",");
     if (r.name) $("#f-name").value = String(r.name).slice(0, 80);
-    if (Number(r.g) > 0 && !(g > 0)) $("#f-g").value = s(r.g);
+    if (Number(r.g) > 0 && !(g > 0)) { const ml = r.u === "ml", big = ml && Number(r.g) >= 1000; $("#f-u").value = ml ? (big ? "l" : "ml") : "g"; $("#f-g").value = s(big ? r.g / 1000 : r.g, 100); }
     $("#f-kcal").value = s(r.kcal); $("#f-p").value = s(r.p, 10); $("#f-c").value = s(r.c, 10); $("#f-f").value = s(r.f, 10); $("#f-az").value = s(r.az, 10); $("#f-fi").value = s(r.fi, 10);
     aiMeal = true; macroTouched = true; $("#f-sug").hidden = true; rKeep();
     msg.textContent = (r.nota ? String(r.nota).slice(0, 220) + " " : "") + "Es una estimación: corrige lo que veas y pulsa Añadir."; msg.className = "msg";
@@ -1979,11 +1988,11 @@ function aiContext() {
   const p = S.profile, d = today(), now = new Date(), t = target(d), tot = totals(d), day = S.days[d] || {}, s = planned(d), slotN = k => (SLOTS.find(x => x[0] === k) || [])[1] || k;
   const actTxt = a => ((TYPES[a.type] || {}).n || a.type) + (a.min ? " " + Math.round(a.min) + " min" : "") + (a.km ? " " + nf(a.km, 1) + " km" : "");
   const past = [1, 2, 3, 4, 5, 6].map(i => { const k = addDays(d, -i), x = S.days[k]; return x && ((x.meals || []).length || (x.acts || []).length) ? `${k}: ${Math.round(totals(k).kcal)} de ${Math.round(target(k).kcal)} kcal; entrenos: ${(x.acts || []).map(actTxt).join(", ") || "ninguno"}` : ""; }).filter(Boolean);
-  const mine = myFoods().slice(-30).map(f => `${f.name}${f.g ? " (" + nf(f.g) + " g)" : " (1 ración)"}: ${f.kcal} kcal, P ${f.p}, H ${f.c}, G ${f.f}`);
+  const mine = myFoods().slice(-30).map(f => `${f.name}${f.g ? " (" + qtyTxt(f.g, f.u) + ")" : " (1 ración)"}: ${f.kcal} kcal, P ${f.p}, H ${f.c}, G ${f.f}`);
   return `\nHoy es ${d} (${DOW[dow(d)]}) y son las ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}.` +
     `\nPersona: ${p.sex === "f" ? "mujer" : "hombre"}, ${p.age} años, ${p.height} cm, ${nf((day.weight || p.weight), 1)} kg. Objetivo: ${(GOALS[p.goal] || GOALS.mant).n}.` +
     `\nObjetivo de hoy: ${Math.round(t.kcal)} kcal, ${Math.round(t.prot)} g de proteína, ${Math.round(t.carb)} g de hidratos, ${Math.round(t.fat)} g de grasa. Lleva: ${Math.round(tot.kcal)} kcal, P ${Math.round(tot.p)}, H ${Math.round(tot.c)}, G ${Math.round(tot.f)}.` +
-    `\nComidas apuntadas hoy: ${(day.meals || []).map(m => slotN(m.slot) + ": " + m.name + (m.g ? " " + nf(m.g) + " g" : "") + " (" + m.kcal + " kcal)").join("; ") || "ninguna"}.` +
+    `\nComidas apuntadas hoy: ${(day.meals || []).map(m => slotN(m.slot) + ": " + m.name + (m.g ? " " + qtyTxt(m.g, m.u) : "") + " (" + m.kcal + " kcal)").join("; ") || "ninguna"}.` +
     `\nSesión prevista hoy: ${s.unset ? "sin planificar" : (TYPES[s.type] || {}).n + (s.min ? " " + s.min + " min" : "")}. Entrenos apuntados hoy: ${(day.acts || []).map(actTxt).join("; ") || "ninguno"}.` +
     (past.length ? `\nDías anteriores:\n${past.join("\n")}` : "") +
     (mine.length ? `\nPlatos que tiene guardados (si nombra uno, usa estos valores):\n${mine.join("\n")}` : "");
@@ -1999,7 +2008,7 @@ const AIROLE = () => `Eres el asistente de Elitepro, una app de entrenamiento y 
   `\n- "date" solo si no fue hoy, y como mucho 7 días atrás.` +
   `\nResponde solo con un objeto JSON, sin más texto: {"reply": "lo que le dices, máximo 80 palabras, texto plano sin asteriscos", "actions": [...]}. Si no hay nada que apuntar, "actions": [].` +
   `\nAcciones posibles:` +
-  `\n{"type": "meal", "slot": uno de ${JSON.stringify(SLOTS.map(x => x[0]))} (${SLOTS.map(x => x[0] + " = " + x[1].toLowerCase()).join(", ")}), "name": "nombre corto", "g": gramos, "kcal": número, "p": proteína, "c": hidratos, "f": grasa, "az": azúcares, "fi": fibra, "date": "AAAA-MM-DD"}` +
+  `\n{"type": "meal", "slot": uno de ${JSON.stringify(SLOTS.map(x => x[0]))} (${SLOTS.map(x => x[0] + " = " + x[1].toLowerCase()).join(", ")}), "name": "nombre corto", "g": cantidad (gramos, o mililitros si es bebida o líquido), "u": "g" o "ml", "kcal": número, "p": proteína, "c": hidratos, "f": grasa, "az": azúcares, "fi": fibra, "date": "AAAA-MM-DD"}` +
   `\n{"type": "act", "sport": uno de ${JSON.stringify(Object.keys(TYPES).filter(k => k !== "descanso"))}, "min": minutos, "km": kilómetros o 0, "kcal": calorías si las dice o 0, "hr": pulso medio o 0, "title": "nombre corto", "date": "AAAA-MM-DD"}`;
 /* Lo que propone la IA se revisa antes de guardarlo: tipos conocidos, números razonables y fechas de la última semana */
 function aiApply(list) {
@@ -2008,9 +2017,9 @@ function aiApply(list) {
     if (!a || typeof a !== "object") return;
     const date = /^\d{4}-\d{2}-\d{2}$/.test(a.date || "") && a.date <= t0 && a.date >= lo ? a.date : t0, d = byDay[date] || (byDay[date] = getDay(date)), when = date === t0 ? "" : " (" + date.slice(8) + "/" + date.slice(5, 7) + ")";
     if (a.type === "meal" && a.name && Number(a.kcal) >= 0 && Number(a.kcal) <= 5000) {
-      const slot = SLOTS.some(x => x[0] === a.slot) ? a.slot : defaultSlot(), rec = { id: uidGen(), slot, name: String(a.name).slice(0, 80), g: Math.min(n(a.g), 5000), kcal: Math.round(n(a.kcal)), p: n(a.p), c: n(a.c), f: n(a.f), az: n(a.az), fi: n(a.fi), ia: true };
+      const slot = SLOTS.some(x => x[0] === a.slot) ? a.slot : defaultSlot(), rec = { id: uidGen(), slot, name: String(a.name).slice(0, 80), g: Math.min(n(a.g), 5000), kcal: Math.round(n(a.kcal)), p: n(a.p), c: n(a.c), f: n(a.f), az: n(a.az), fi: n(a.fi), ia: true }; if (a.u === "ml" && rec.g > 0) rec.u = "ml";
       d.meals.push(rec); if (date === S.date) openSlots.add(slot);
-      done.push({ kind: "meals", id: rec.id, date, label: SLOTS.find(x => x[0] === slot)[1] + ": " + rec.name + " · " + nf(rec.kcal) + " kcal" + when });
+      done.push({ kind: "meals", id: rec.id, date, label: SLOTS.find(x => x[0] === slot)[1] + ": " + rec.name + (rec.g ? " · " + qtyTxt(rec.g, rec.u) : "") + " · " + nf(rec.kcal) + " kcal" + when });
     } else if (a.type === "act" && TYPES[a.sport] && a.sport !== "descanso" && (n(a.min) > 0 || n(a.km) > 0)) {
       const rec = { id: uidGen(), type: a.sport, min: Math.min(n(a.min), 1440), km: Math.min(n(a.km), 500), kcal: Math.round(Math.min(n(a.kcal), 10000)), hr: n(a.hr) >= 40 && n(a.hr) <= 230 ? Math.round(n(a.hr)) : 0, title: a.title ? String(a.title).slice(0, 60) : "", src: "ia" };
       d.acts.push(rec);
@@ -2309,7 +2318,7 @@ document.addEventListener("click", e => {
   }
   if (t.dataset.delEv) { const p = clone(S.profile); p.events = events().filter(x => x.id !== t.dataset.delEv); if (p.target === t.dataset.delEv) p.target = ""; profFilled = false; return saveProfile(p); }
   if (t.dataset.targetEv) { const p = clone(S.profile); p.target = t.dataset.targetEv; return saveProfile(p); }
-  if (t.dataset.useFood) { const fd = t.dataset.useFood, gr = String(num($("#c-g").value) > 0 ? num($("#c-g").value) : 100).replace(".", ","); openMeal(null); $("#f-name").value = fd; const hit = findFood(fd); if (hit && !hit[5]) { $("#f-g").value = ""; fromTable(true); } else { $("#f-g").value = gr; fromTable(false); } mealFields(true); mealList(); rKeep(); return; }
+  if (t.dataset.useFood) { const fd = t.dataset.useFood, gr = String(num($("#c-g").value) > 0 ? num($("#c-g").value) : 100).replace(".", ","); openMeal(null); $("#f-name").value = fd; const hit = findFood(fd); if (hit && !hit[5]) { $("#f-g").value = ""; fromTable(true); } else { $("#f-u").value = hit ? rowUnit(hit) : "g"; $("#f-g").value = gr; fromTable(false); } mealFields(true); mealList(); rKeep(); return; }
   if (t.dataset.delInj) { const p = clone(S.profile); p.injuries = injuries().filter(i => i.id !== t.dataset.delInj); return saveProfile(p); }
   if (t.dataset.delGlu) { const d = getDay(S.date); d.glu = (d.glu || []).filter(g => g.id !== t.dataset.delGlu); return saveDay(d); }
   if (t.dataset.delMeal) { const d = getDay(S.date); d.meals = d.meals.filter(m => m.id !== t.dataset.delMeal); return saveDay(d); }
