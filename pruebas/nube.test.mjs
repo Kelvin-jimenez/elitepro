@@ -45,8 +45,8 @@ try {
   ok('A: cuenta creada, conectada y sin aviso', /Conectada/.test(await T(A, '#cl-chip')) && !(await A.isVisible('#banner')), await T(A, '#cl-chip'));
   ok('A: el formulario de perfil no se ha tocado', (await A.inputValue('#p-name')) === 'Marco');
   await settle(A, 500);
-  let d = await dump(), raw = JSON.stringify(d);
-  ok('servidor: correo en claro para poder contactar, y nada más legible', raw.includes('marco@ejemplo.com') && !/Arroz|Marco"|dm2|clave-de-marco|"kcal"|"weight"/.test(raw));
+  let d = await dump(), soc = (d.sheets.amigos_perfiles || []).map(r => r[1]); (d.sheets.amigos_perfiles || []).forEach(r => { r[1] = ''; }); let raw = JSON.stringify(d);
+  ok('servidor: correo en claro para poder contactar, el nombre visible para los amigos, y nada más legible', raw.includes('marco@ejemplo.com') && soc.includes('Marco') && !/Arroz|Marco"|dm2|clave-de-marco|"kcal"|"weight"/.test(raw), soc.join());
   ok('servidor: consentimiento registrado sin datos de salud', /mayor de edad: sí · datos de salud: no/.test(d.sheets.usuarios[1][4]), d.sheets.usuarios[1][4]);
   ok('servidor: la invitación queda usada', d.sheets.invitaciones.some(r => r[2] === 'marco@ejemplo.com'));
   // --- entrenador ve los datos, sin salud

@@ -210,6 +210,14 @@ dl.kv .over dd{color:var(--crit)}
 .gsteps{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .gdays{display:flex;gap:6px;flex-wrap:wrap}.gdays .btn{min-width:44px}
 .linkchip{cursor:pointer;font-family:inherit}
+.av{display:inline-grid;place-items:center;flex:0 0 auto;border-radius:50%;object-fit:cover;background:color-mix(in srgb,var(--mark) 22%,var(--surface-2));color:var(--ink);font-weight:700;border:1px solid var(--line)}
+.amme{display:flex;gap:14px;align-items:center}.amme b{font-size:1.1rem}
+.amlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.amlist li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.amlist li>span:nth-child(2){display:flex;flex-direction:column;gap:2px;min-width:0}.amlist small{color:var(--muted);font-size:.85rem}
+.amlist li:has(.amf){display:block}.amf{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center}
+@media(max-width:560px){.amlist li{grid-template-columns:auto minmax(0,1fr)}.amlist li>.gbtn{grid-column:2;justify-content:flex-start}}
+.amf>span:nth-child(2){display:flex;flex-direction:column;gap:2px;min-width:0}.amf:focus-visible{outline:2px solid var(--mark);outline-offset:4px;border-radius:10px}
 .wzh{font-family:var(--f-display);font-weight:700;font-size:1.35rem;line-height:1.15}
 .wzpart{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start}.wzpart input{width:20px;height:20px;margin-top:10px;accent-color:var(--mark)}
 #wod-body .fld textarea,.wzpart textarea{width:100%;font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;resize:vertical}
@@ -397,6 +405,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
       <a href="#semana" data-tab="semana"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Semana</a>
       <a href="#progreso" data-tab="progreso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15l4-4 3 3 5-6"/></svg>Progreso</a>
       <a href="#comp" data-tab="comp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4M6 5h11l-2.5 3.5L17 12H6"/></svg>Competiciones</a>
+      <a href="#amigos" data-tab="amigos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c.8-3 3.2-4.5 6-4.5s5.2 1.5 6 4.5M15 15c2.6-.4 4.8.8 5.6 3.5"/></svg>Amigos</a>
       <a href="#datos" data-tab="datos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="3.5"/><path d="M5 20c1-3.5 4-5 7-5s6 1.5 7 5"/></svg>Perfil</a>
     </nav>
     <div class="side-foot">
@@ -505,9 +514,15 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
       </div>
     </section>
 
+    <section id="v-amigos" class="view" hidden>
+      <div class="pagehead"><div class="hello"><p class="hi">Amigos</p><h1>Entrena acompañado</h1></div></div>
+      <div id="am-body" class="col" style="gap:16px"></div>
+    </section>
+
     <section id="v-datos" class="view" hidden>
       <div class="pagehead"><div class="hello"><p class="hi">Perfil</p><h1>Tus datos y ajustes</h1></div></div>
       <a class="card linkcard only-m" href="#comp"><span>Competiciones y carreras</span><span aria-hidden="true">›</span></a>
+      <a class="card linkcard only-m" href="#amigos"><span>Amigos</span><span aria-hidden="true">›</span></a>
     <form id="p-form" class="col" autocomplete="off">
       <div class="card">
         <div class="eyebrow">Tus datos</div>
@@ -783,6 +798,10 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
   <div class="sheet-head"><h2 id="sh-start-t">¿Cómo entrenas?</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div id="start-body" class="col" style="gap:14px"></div>
 </div></dialog>
+<dialog class="sheet" id="sh-friend" aria-labelledby="sh-friend-t"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="sh-friend-t">Amigo</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div id="friend-body" class="col" style="gap:12px"></div>
+</div></dialog>
 <dialog class="sheet" id="sh-wod" aria-labelledby="sh-wod-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-wod-t">Registrar entreno</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div id="wod-body" class="col" style="gap:12px"></div>
@@ -1031,6 +1050,8 @@ function keepFood(rec) {
 
 /* ---------- Estado y guardado ---------- */
 const S = { mode: "loading", profile: null, days: {}, date: today(), week: monday(today()), tab: "hoy", got: { p: false, d: false } };
+/* Amigos: la versión web con cuenta lo sustituye; aquí solo se explica dónde funciona */
+let rAmigos = () => { const b = $("#am-body"); if (b) b.innerHTML = `<div class="card"><p class="sub">Amigos funciona en la app web de Elitepro con tu cuenta en la nube.</p></div>`; };
 let db = null, profRef = null, daysCol = null, sample = null, canImg = false, aiWeb = false; // aiWeb: versión web, donde la IA se enciende al entrar en la cuenta
 const W = {}; // cola de escritura: una a la vez por documento
 const LS = "platoypista:v1";
@@ -1256,7 +1277,7 @@ function render() {
   const loading = S.mode === "loading", need = !loading && !S.profile;
   $("#v-load").hidden = !loading;
   $("#v-need").hidden = !(need && S.tab !== "datos");
-  ["hoy", "semana", "progreso", "comp"].forEach(k => { $("#v-" + k).hidden = loading || need || S.tab !== k; });
+  ["hoy", "semana", "progreso", "comp", "amigos"].forEach(k => { $("#v-" + k).hidden = loading || need || S.tab !== k; });
   $("#v-datos").hidden = loading || S.tab !== "datos";
   if (loading) return;
   rInj();
@@ -1268,6 +1289,7 @@ function render() {
   if (S.tab === "semana") rSemana();
   if (S.tab === "progreso") rProgreso();
   if (S.tab === "comp") rComp();
+  if (S.tab === "amigos") rAmigos();
   rCalc();
   animate();
 }
@@ -1292,7 +1314,7 @@ function rHoy() {
   $("#d-nav").innerHTML = `<div class="hello"><p class="hi">${isToday ? hi + (S.profile.name ? ", " + esc(S.profile.name) : "") : "Estás viendo otro día"}</p><h1>${esc(fecha)}</h1></div>
     <div class="nav-btns"><button class="round" type="button" data-go="-1" aria-label="Día anterior">‹</button>${isToday ? "" : `<button class="btn ghost sm" type="button" data-go="0">Ir a hoy</button>`}<button class="round" type="button" data-go="1" aria-label="Día siguiente">›</button></div>`;
 
-  rGuide();
+  rGuide(); if (typeof rGuideSoc === "function") rGuideSoc();
   /* --- objetivo del día: anillo y cifras --- */
   const rem = t.kcal - tot.kcal, over = rem < -0.05 * t.kcal, pct = t.kcal > 0 ? tot.kcal / t.kcal * 100 : 0;
   const exLabel = t.real ? "entreno hecho" : (s.type === "descanso" ? "sin entreno" : "entreno previsto");
@@ -1722,7 +1744,7 @@ $("#p-form").addEventListener("submit", e => {
   }
   const first = !S.profile;
   profDirty = false;
-  saveProfile(Object.assign(S.profile ? { diet: S.profile.diet, rem: S.profile.rem, medrem: S.profile.medrem, foods: S.profile.foods, mode: S.profile.mode, guide: S.profile.guide } : {}, { name: $("#p-name").value.trim().slice(0, 40), sex: $("#p-sex").value, age: Math.round(age), height, weight, activity: num($("#p-act").value), goal: $("#p-goal").value, plan: $("#p-plan").value, week, events: evs, target: tgt, health: readHealth(), injuries: clone(injuries()) }));
+  saveProfile(Object.assign(S.profile ? { diet: S.profile.diet, rem: S.profile.rem, medrem: S.profile.medrem, foods: S.profile.foods, mode: S.profile.mode, guide: S.profile.guide, photo: S.profile.photo } : {}, { name: $("#p-name").value.trim().slice(0, 40), sex: $("#p-sex").value, age: Math.round(age), height, weight, activity: num($("#p-act").value), goal: $("#p-goal").value, plan: $("#p-plan").value, week, events: evs, target: tgt, health: readHealth(), injuries: clone(injuries()) }));
   msg.textContent = "Guardado."; msg.className = "msg";
   if (first) location.hash = "#hoy";
 });
@@ -2943,7 +2965,7 @@ const tipShow = e => {
 };
 document.addEventListener("pointermove", tipShow); document.addEventListener("pointerdown", tipShow);
 document.addEventListener("pointerleave", () => document.querySelectorAll(".tip").forEach(t => { t.hidden = true; }), true);
-function route() { const h = location.hash.replace("#", ""); S.tab = ["hoy", "semana", "progreso", "comp", "datos"].includes(h) ? h : "hoy"; render(); window.scrollTo(0, 0); }
+function route() { const h = location.hash.replace("#", ""); S.tab = ["hoy", "semana", "progreso", "comp", "amigos", "datos"].includes(h) ? h : "hoy"; render(); window.scrollTo(0, 0); }
 window.addEventListener("hashchange", route);
 
 /* ---------- Modo claro u oscuro ---------- */

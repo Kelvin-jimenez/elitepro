@@ -27,7 +27,7 @@ def fill(t, esc):
     return t
 if cfg['url']:
     card = (snip / 'snip_cloud_card.html').read_text(encoding='utf8') + card
-    js = js + core + fill((snip / 'snip_cloud_js.js').read_text(encoding='utf8'), jsesc)
+    js = js + core + fill((snip / 'snip_cloud_js.js').read_text(encoding='utf8'), jsesc) + (snip / 'snip_social_js.js').read_text(encoding='utf8')
 # App instalable: tarjeta en Perfil, registro del service worker y comprobación de versión
 js = js + (snip / 'snip_rem_js.js').read_text(encoding='utf8') + (snip / 'snip_pwa_js.js').read_text(encoding='utf8') + (snip / 'snip_update_js.js').read_text(encoding='utf8')
 rep('      <div class="card">\n        <div class="eyebrow">Empezar de cero</div>', card + '      <div class="card">\n        <div class="eyebrow">Empezar de cero</div>')

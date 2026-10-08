@@ -97,7 +97,7 @@ async function cSync(pull, remote) {
       put();
     }
     if (!done) throw Object.assign(new Error("red"), { code: "red" });
-    me.at = Date.now(); put(); if (mine()) cSet("ok");
+    me.at = Date.now(); put(); if (mine()) { cSet("ok"); if (me.fk) socPub().catch(() => {}); } // el perfil para amigos, al día con lo guardado
   } catch (e) {
     if (e && e.code === "sesion") { me.token = ""; put(); if (mine()) { cSet("login"); cNote(); } }
     else if (mine()) { cSet(e && e.code === "llave" ? "llave" : "err"); if (!(e && e.code === "llave")) { clearTimeout(cT); cT = setTimeout(() => cSync(true), 45000); } } // se reintenta sola al rato
@@ -119,7 +119,7 @@ $("#v-hoy .dash").insertAdjacentHTML("beforebegin", `<div class="card" id="cl-ct
 function cCta() { let off = false; try { off = localStorage.getItem("elitepro:cta:" + users.current) === "1"; } catch (e) { off = false; } $("#cl-cta").hidden = cOn() || off || !S.profile || S.mode !== "local"; }
 $("#cl-cta-x").addEventListener("click", () => { try { localStorage.setItem("elitepro:cta:" + users.current, "1"); } catch (e) { /* sin almacenamiento */ } $("#cl-cta").hidden = true; });
 function cSet(st) {
-  cCta(); cAi();
+  cCta(); cAi(); socState();
   cState = st; const chip = $("#cl-chip"), body = $("#cl-body"); if (!body) return;
   const on = !!(cs && cs.token), bad = st === "err" || st === "llave";
   chip.hidden = !cOn(); chip.textContent = !cOn() ? "" : st === "sync" ? "Sincronizando" : st === "llave" ? "En pausa" : st === "err" ? "Sin conexión" : !on ? "Sesión caducada" : "Conectada"; chip.className = "chip" + (on && !bad ? " done" : "");
@@ -200,13 +200,13 @@ $("#cl-form").addEventListener("submit", async e => {
       const keep = cKey(email);
       if (keep) { // este dispositivo tiene la llave: se vuelve a guardar protegida con la contraseña nueva y los datos siguen como estaban
         const r = await EPC.api(CLOUD_URL, { op: "reset_do", email, code, auth: k.auth, wrapUser: EPC.b64(await EPC.enc(k.kek, EPC.unb64(keep.dek))) });
-        keep.token = r.token; keep.ai = !!r.ai; cStore(keep);
+        keep.token = r.token; keep.ai = !!r.ai; cStore(keep); if (keep.sk && cs === keep) socRewrap(k.kek).catch(() => {});
         if (cs === keep) { closeSheets(); cSet("ok"); cNote(); cSync(true); }
       } else { // sin la llave, lo de la nube no se puede abrir: la cuenta empieza de nuevo con lo que hay aquí (la salud, solo si se vuelve a consentir)
         const pub = await cPub(), dek = EPC.rand(32), me = { uid: users.current, email, token: "", dek: EPC.b64(dek), rev: 0, base: cEmpty(), health: false, kid: pub.kid }, snap = cSnap(me);
         const r = await EPC.api(CLOUD_URL, { op: "reset_do", email, code, auth: k.auth, wrapUser: EPC.b64(await EPC.enc(k.kek, dek)), wrapCoach: await EPC.wrapFor(pub.pub, dek), kid: pub.kid, blob: await EPC.seal(dek, snap) });
         me.token = r.token; me.rev = r.rev; me.base = cHashes(me, snap); me.at = Date.now(); me.ai = !!r.ai;
-        cs = me; csFor = me.uid; cStore(); closeSheets(); cSet("ok"); cNote();
+        cs = me; csFor = me.uid; cStore(); closeSheets(); cSet("ok"); cNote(); socAfterAuth(k.kek, me).then(() => socPub(true)).catch(() => {});
       }
       cRst = ""; toast("Contraseña cambiada. En tus otros dispositivos tendrás que volver a entrar.");
     } else if (cMode === "register") {
@@ -218,16 +218,17 @@ $("#cl-form").addEventListener("submit", async e => {
       if (r.existing) { me.rev = -1; me.base = cEmpty(); me.fresh = true; } else { me.rev = r.rev; me.base = cHashes(me, snap); } // `existing`: el registro ya había entrado en un intento anterior
       cs = me; csFor = me.uid; cStore();
       closeSheets(); cSet("ok"); cNote(); toast("Cuenta creada. Tus datos ya se guardan en la nube."); if (r.existing) cSync(true); else cTouch();
+      socAfterAuth(k.kek, me).catch(() => {});
     } else if (cMode === "login") {
       const r = await EPC.api(CLOUD_URL, { op: "login", email, auth: k.auth }), dek = await EPC.dec(k.kek, EPC.unb64(r.wrapUser));
       const old = cs && cs.email === email ? cs : null;
       cs = { uid: users.current, email, token: r.token, dek: EPC.b64(dek), rev: old ? old.rev : -1, base: old ? old.base : cEmpty(), health: !!r.health, adopt: !old && !!r.health, fresh: !old || !!old.fresh, ai: !!r.ai, aiok: !!(old && old.aiok), kid: r.kid, rewrap: !!(r.ckid && r.ckid !== r.kid) }; csFor = cs.uid; cStore();
-      closeSheets(); cNote(); await cSync(true, r);
+      closeSheets(); cNote(); const kk = k.kek, mm = cs; await cSync(true, r); socAfterAuth(kk, mm).then(() => socPub()).catch(() => {});
       toast("Dentro. Tus datos están al día con la nube."); if (S.profile && S.tab === "hoy") render(); else if (S.profile) location.hash = "#hoy";
     } else if (cMode === "passwd") {
       const n = await EPC.derive(val("cl-new"), "elitepro:user:" + email);
       const r = await EPC.api(CLOUD_URL, { op: "passwd", token: cs.token, auth: k.auth, next: n.auth, wrapUser: EPC.b64(await EPC.enc(n.kek, EPC.unb64(cs.dek))) });
-      cs.token = r.token; cStore(); closeSheets(); toast("Contraseña cambiada. En tus otros dispositivos tendrás que volver a entrar.");
+      cs.token = r.token; cStore(); socRewrap(n.kek).catch(() => {}); closeSheets(); toast("Contraseña cambiada. En tus otros dispositivos tendrás que volver a entrar.");
     } else {
       await EPC.api(CLOUD_URL, { op: "remove", token: cs.token, auth: k.auth });
       clearTimeout(cT); cs = null; cStore(); closeSheets(); cSet(""); cNote(); toast("Cuenta borrada de la nube.");
