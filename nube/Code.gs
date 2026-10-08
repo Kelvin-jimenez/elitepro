@@ -9,6 +9,10 @@
  * Qué guarda: una fila por usuario con su correo, las fechas, el consentimiento que dio y sus
  * datos CIFRADOS. El cifrado se hace en el dispositivo del usuario; aquí nunca llega nada legible
  * (ni contraseñas, ni comidas, ni peso, ni datos de salud).
+ *
+ * Amigos: cada usuario tiene además un nombre visible, una clave pública y su «perfil para amigos» (foto, entrenos y comidas)
+ * CIFRADO con una llave que solo tienen él y los amigos que ha aceptado. Aquí se guardan las solicitudes (con el correo que
+ * se escribió) y las amistades, pero ni el administrador ni el entrenador pueden leer lo que se comparte.
  */
 const POLICY = "1";            // versión de la política de privacidad que se acepta al registrarse
 const CHUNK = 40000;           // una celda admite 50.000 caracteres: los datos se parten en trozos
@@ -17,6 +21,10 @@ const TZ = "Europe/Madrid";
 const USERS = "usuarios", INVITES = "invitaciones";
 const HEAD_U = ["id", "correo", "alta", "último acceso", "consentimiento", "rev", "trozos", "claves (no tocar)", "datos cifrados →"];
 const HEAD_I = ["código", "creado", "usado por", "usado el"];
+const SOCIAL = "amigos_perfiles", FRIENDS = "amigos_relaciones";
+const HEAD_S = ["id", "nombre visible", "clave pública", "llave privada cifrada (no tocar)", "llave de amigos cifrada (no tocar)", "actualizado", "perfil para amigos (cifrado)"];
+const HEAD_F = ["de (id)", "para (correo)", "para (id)", "estado", "creada", "llave de «de» para «para»", "llave de «para» para «de»"];
+const MAX_FEED = 48000, B64 = /^[A-Za-z0-9+\/=]+$/, EMAIL_RE = /^[a-z0-9][a-z0-9._%+-]*@[a-z0-9.-]+\.[a-z]{2,}$/;
 
 /* ---------- utilidades ---------- */
 function props_() { return PropertiesService.getScriptProperties(); }
@@ -49,7 +57,7 @@ function sheet_(name) {
   var ss = ss_(), s = ss.getSheetByName(name);
   if (!s) {
     s = ss.insertSheet(name);
-    var head = name === USERS ? HEAD_U : HEAD_I;
+    var head = name === USERS ? HEAD_U : name === SOCIAL ? HEAD_S : name === FRIENDS ? HEAD_F : HEAD_I;
     s.getRange(1, 1, s.getMaxRows(), s.getMaxColumns()).setNumberFormat("@"); // todo como texto: nada se convierte en número, fecha o fórmula
     s.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight("bold");
     s.setFrozenRows(1);
@@ -93,6 +101,29 @@ function aiCount_(name, max) {
   var p = props_(), day = now_().slice(0, 10), raw = String(p.getProperty(name) || "").split("|"), n = raw[0] === day ? Number(raw[1]) || 0 : 0;
   if (n >= max) fail_("limite_ia");
   p.setProperty(name, day + "|" + (n + 1));
+}
+/* ---------- amigos ---------- */
+function soc_(id) {
+  var s = sheet_(SOCIAL), row = find_(s, 1, id); if (!row) return { s: s, row: 0, id: id, name: "", pub: "", skw: "", fks: "", feed: "" };
+  var v = s.getRange(row, 1, 1, 7).getValues()[0];
+  return { s: s, row: row, id: id, name: String(v[1]), pub: String(v[2]), skw: String(v[3]).slice(2), fks: String(v[4]).slice(2), at: String(v[5]), feed: String(v[6]).slice(2) };
+}
+function socPut_(x) {
+  if (!x.row) x.row = Math.max(x.s.getLastRow(), 1) + 1;
+  x.s.getRange(x.row, 1, 1, 7).setNumberFormat("@").setValues([[x.id, x.name, x.pub, "k:" + x.skw, "k:" + x.fks, now_(), "f:" + (x.feed || "")]]);
+}
+function name_(v) { return String(v || "").replace(/[\u0000-\u001f<>]/g, "").replace(/^[=+\-@\s]+/, "").trim().slice(0, 40) || "Sin nombre"; }
+function frRows_() {
+  var s = sheet_(FRIENDS), last = s.getLastRow(), rows = last > 1 ? s.getRange(2, 1, last - 1, 7).getValues() : [];
+  return { s: s, rows: rows.map(function (r, i) { return { row: i + 2, a: String(r[0]), email: String(r[1]), b: String(r[2]), st: String(r[3]), at: String(r[4]), wa: String(r[5]).slice(2), wb: String(r[6]).slice(2) }; }).filter(function (f) { return f.a; }) };
+}
+function frPut_(s, f) { s.getRange(f.row, 1, 1, 7).setNumberFormat("@").setValues([[f.a, f.email, f.b, f.st, f.at, "k:" + (f.wa || ""), "k:" + (f.wb || "")]]); }
+function rid_(f) { return sha_(f.a + "|" + f.email + "|" + f.at).slice(0, 16); }
+function frDel_(F, list) { list.map(function (f) { return f.row; }).sort(function (a, b) { return b - a; }).forEach(function (r) { F.s.deleteRow(r); }); }
+/* Al borrar una cuenta se borran también su perfil para amigos, sus amistades y las solicitudes que mandó o le mandaron */
+function socForget_(id, email) {
+  var s = sheet_(SOCIAL), row = find_(s, 1, id); if (row) s.deleteRow(row);
+  var F = frRows_(); frDel_(F, F.rows.filter(function (f) { return f.a === id || f.b === id || (f.st === "pend" && f.email === email); }));
 }
 function coach_() { var raw = props_().getProperty("coach"); return raw ? JSON.parse(raw) : null; }
 function ckid_() { var c = coach_(); return c ? c.kid : ""; }
@@ -190,7 +221,74 @@ var OPS = {
   remove: function (b) {
     var x = user_(b.token, false), u = x.u, auth = str_(b.auth, 64, /^[0-9a-f]{64}$/);
     if (!same_(sha_(u.sec.salt + auth), u.sec.hash)) bad_("pw:" + u.id, "credenciales");
-    x.s.deleteRow(u.row); forget_(u.email); props_().deleteProperty("ai_n:" + u.id);
+    x.s.deleteRow(u.row); forget_(u.email); props_().deleteProperty("ai_n:" + u.id); socForget_(u.id, u.email);
+    return {};
+  },
+
+  /* ---------- amigos ---------- */
+  /* Lo mío: clave pública, llave privada cifrada con mi contraseña y llave de amigos cifrada para mí mismo */
+  soc_me: function (b) { var x = user_(b.token, false), m = soc_(x.u.id); return m.row ? { pub: m.pub, skw: m.skw, fks: m.fks, name: m.name } : {}; },
+  /* Alta o cambio de llaves. Si cambia la clave pública, las llaves que me habían dado mis amigos ya no valen: se borran y las vuelven a hacer */
+  soc_set: function (b) {
+    var x = user_(b.token, false), m = soc_(x.u.id), pub = str_(b.pub, 1000), changed = !!m.row && m.pub !== pub;
+    m.name = name_(b.name); m.pub = pub; m.skw = str_(b.skw, 2000, B64); m.fks = str_(b.fks, 400, B64); if (changed || !m.row) m.feed = ""; socPut_(m);
+    if (changed) { var F = frRows_(); F.rows.forEach(function (f) { if (f.st === "ok" && (f.a === m.id || f.b === m.id)) { f.wa = ""; f.wb = ""; frPut_(F.s, f); } }); }
+    return {};
+  },
+  /* Solicitud de amistad por correo. Contesta igual exista o no esa cuenta, para no revelar quién está registrado */
+  fr_req: function (b) {
+    var x = user_(b.token, false), me = x.u.id, email = str_(String(b.email || "").trim().toLowerCase(), 120, EMAIL_RE);
+    if (email === x.u.email) fail_("tu_correo");
+    if (!soc_(me).row) fail_("sin_amigos");
+    var F = frRows_(), s = sheet_(USERS), row = find_(s, 2, email), tid = row ? String(s.getRange(row, 1).getValue()) : "";
+    if (F.rows.filter(function (f) { return f.a === me && f.st === "pend"; }).length >= 30) fail_("demasiadas");
+    var dup = F.rows.some(function (f) { return (f.a === me && (f.email === email || (tid && f.b === tid))) || (tid && f.a === tid && (f.b === me || f.email === x.u.email)); });
+    if (!dup) frPut_(F.s, { row: Math.max(F.s.getLastRow(), 1) + 1, a: me, email: email, b: "", st: "pend", at: now_() + ":" + rand_().slice(0, 6), wa: "", wb: "" });
+    return {};
+  },
+  /* Mis amigos (con su perfil cifrado y la llave que me han dado para abrirlo), las solicitudes que me han hecho y las que he hecho */
+  fr_list: function (b) {
+    var x = user_(b.token, false), me = x.u.id, F = frRows_(), out = { friends: [], incoming: [], outgoing: [] };
+    F.rows.forEach(function (f) {
+      if (f.st === "pend" && f.a === me) out.outgoing.push({ rid: rid_(f), email: f.email });
+      else if (f.st === "pend" && f.email === x.u.email) { var o = soc_(f.a); if (o.row) out.incoming.push({ rid: rid_(f), id: f.a, name: o.name, pub: o.pub }); }
+      else if (f.st === "ok" && (f.a === me || f.b === me)) {
+        var other = f.a === me ? f.b : f.a, p = soc_(other); if (!p.row) return;
+        out.friends.push({ id: other, name: p.name, pub: p.pub, wrap: f.a === me ? f.wb : f.wa, mine: !!(f.a === me ? f.wa : f.wb), feed: p.feed, at: p.at });
+      }
+    });
+    return out;
+  },
+  /* Aceptar (con la llave de mi perfil para quien me lo pidió) o rechazar una solicitud */
+  fr_ans: function (b) {
+    var x = user_(b.token, false), F = frRows_(), rid = str_(b.rid, 40), f = F.rows.filter(function (r) { return r.st === "pend" && r.email === x.u.email && rid_(r) === rid; })[0];
+    if (!f) fail_("no_existe");
+    if (b.ok !== true) { frDel_(F, [f]); return {}; }
+    if (!soc_(x.u.id).row) fail_("sin_amigos");
+    f.b = x.u.id; f.st = "ok"; f.wb = str_(b.wrap, 400, B64); frPut_(F.s, f);
+    return {};
+  },
+  /* Mis llaves para mis amigos (al aceptar ellos, o al cambiar mi llave tras dejar a alguien); de paso, mi llave para mí y mi perfil */
+  fr_wrap: function (b) {
+    var x = user_(b.token, false), me = x.u.id, w = b.wraps && typeof b.wraps === "object" ? b.wraps : {}, F = frRows_();
+    F.rows.forEach(function (f) {
+      if (f.st !== "ok" || (f.a !== me && f.b !== me)) return; var other = f.a === me ? f.b : f.a;
+      if (Object.prototype.hasOwnProperty.call(w, other)) { var v = str_(w[other], 400, B64); if (f.a === me) f.wa = v; else f.wb = v; frPut_(F.s, f); }
+    });
+    if (b.fks || typeof b.feed === "string") { var m = soc_(me); if (!m.row) fail_("sin_amigos"); if (b.fks) m.fks = str_(b.fks, 400, B64); if (typeof b.feed === "string") { if (b.feed.length > MAX_FEED || (b.feed && !B64.test(b.feed))) fail_("datos"); m.feed = b.feed; } socPut_(m); }
+    return {};
+  },
+  /* Dejar de ser amigos, cancelar una solicitud enviada */
+  fr_del: function (b) {
+    var x = user_(b.token, false), me = x.u.id, F = frRows_(), id = String(b.id || ""), rid = String(b.rid || "");
+    frDel_(F, F.rows.filter(function (f) { return (id && f.st === "ok" && ((f.a === me && f.b === id) || (f.b === me && f.a === id))) || (rid && f.a === me && rid_(f) === rid); }));
+    return {};
+  },
+  /* Mi perfil para amigos, ya cifrado en el dispositivo, y el nombre visible */
+  feed_set: function (b) {
+    var x = user_(b.token, false), m = soc_(x.u.id); if (!m.row) fail_("sin_amigos");
+    if (typeof b.feed !== "string" || b.feed.length > MAX_FEED || !B64.test(b.feed)) fail_("datos");
+    m.feed = b.feed; if (b.name) m.name = name_(b.name); socPut_(m);
     return {};
   },
 
@@ -269,7 +367,7 @@ var OPS = {
     admin_(b.token);
     var s = sheet_(USERS), row = find_(s, 1, str_(b.id, 40)); if (!row) fail_("no_existe");
     var email = String(s.getRange(row, 2).getValue());
-    s.deleteRow(row); forget_(email); props_().deleteProperty("ai_n:" + b.id);
+    s.deleteRow(row); forget_(email); props_().deleteProperty("ai_n:" + b.id); socForget_(String(b.id), email);
     return {};
   }
 };
@@ -277,7 +375,7 @@ var OPS = {
 /* ---------- entrada ---------- */
 /* Solo las operaciones que escriben en la hoja cogen turno, y esperan poco: si otra petición lo tiene, se contesta
    «ocupado» y la app lo reintenta. Las lecturas no esperan a nadie, así una petición atascada no deja fuera a los demás. */
-var WRITES = { register: 1, save: 1, passwd: 1, remove: 1, reset_ask: 1, reset_do: 1, a_setup: 1, a_invite: 1, a_delete: 1 };
+var WRITES = { register: 1, save: 1, passwd: 1, remove: 1, reset_ask: 1, reset_do: 1, a_setup: 1, a_invite: 1, a_delete: 1, soc_set: 1, fr_req: 1, fr_ans: 1, fr_wrap: 1, fr_del: 1, feed_set: 1 };
 function doPost(e) {
   var out, slow = false, lock = null, t0 = Date.now(), name = "?";
   try {
