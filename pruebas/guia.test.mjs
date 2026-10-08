@@ -46,8 +46,14 @@ try {
   ok('…y con un toque cambia el día a movilidad suave de 30′', L.days[t0].session.type === 'movilidad' && L.days[t0].session.min === 30 && /Movilidad/.test(await T(A, '#guide-card')));
   await A.click('#guide-card [data-feel=""]'); await A.waitForTimeout(200); await A.click('#guide-card [data-feel="pain"]'); await A.waitForTimeout(300); g = await T(A, '#guide-card');
   ok('con molestias: lo primero la persona, y manda al fisio o al médico si no se pasa', /Lo primero eres tú/.test(g) && /fisio o un médico/.test(g) && await A.isVisible('#guide-card [data-goto="inj-box"]'), g);
-  await A.click('#guide-card [data-done-sess]'); await A.waitForTimeout(300); L = await local(A); g = await T(A, '#guide-card');
-  ok('«Hecho» apunta el entreno previsto con un toque y lo celebra', L.days[t0].acts.length === 1 && L.days[t0].acts[0].type === 'movilidad' && L.days[t0].acts[0].src === 'plan' && /Buen trabajo/.test(g) && /según lo previsto/.test(await T(A, '#d-sess')), g);
+  await A.click('#guide-card [data-done-sess]'); await A.waitForTimeout(300); let wb = await T(A, '#wod-body');
+  ok('«Lo he hecho» abre el registro: primero pregunta si lo hizo completo', await A.evaluate(() => document.querySelector('#sh-wod').open) && /Paso 1 de 3/.test(wb) && /¿Lo hiciste completo\?/.test(wb), wb);
+  await A.click('[data-wz-full="1"]'); await A.waitForTimeout(150); wb = await T(A, '#wod-body');
+  ok('luego el tiempo, con la duración prevista ya puesta', /Paso 2 de 3/.test(wb) && await A.inputValue('#wz-min') === '30');
+  await A.fill('#wz-min', '35'); await A.click('[data-wz-next="with"]'); await A.waitForTimeout(150);
+  ok('y luego si fue solo o en pareja (sin elegir no deja guardar)', /Paso 3 de 3/.test(await T(A, '#wod-body')) && await A.isDisabled('[data-wz-save]'));
+  await A.click('[data-wz-with="pareja"]'); await A.waitForTimeout(150); await A.fill('#wz-mate', 'Bacilio'); await A.click('[data-wz-save]'); await A.waitForTimeout(300); L = await local(A); g = await T(A, '#guide-card');
+  ok('se guarda completo, con su tiempo y en pareja, y lo celebra', L.days[t0].acts.length === 1 && L.days[t0].acts[0].type === 'movilidad' && L.days[t0].acts[0].min === 35 && L.days[t0].acts[0].full === true && L.days[t0].acts[0].with === 'pareja' && L.days[t0].acts[0].mate === 'Bacilio' && /Buen trabajo/.test(g) && /completo · en pareja con Bacilio/.test(await T(A, '#d-sess')), JSON.stringify(L.days[t0].acts));
 
   // ---- 3. Quien empieza: plan «Híbrido desde cero»
   await A.click('#guide-card [data-sheet="start"]'); await A.waitForTimeout(250); await A.click('[data-st-go="guia"]'); await A.waitForTimeout(200);
@@ -85,7 +91,13 @@ try {
   ok('la pizarra se lee de la foto y deja la sesión de hoy con sus partes y un consejo', ss.type === 'hibrido' && ss.min === 55 && ss.title === 'Simulación Hyrox' && /WOD: 4 rondas/.test(ss.note) && /conservador/.test(ss.tip) && S1.length === 1 && S1[0].body.messages[0].content[0].type === 'image' && /pizarra de un box/.test(JSON.stringify(S1[0].body)), JSON.stringify(ss));
   ok('…y Hoy la enseña y ajusta el objetivo al entreno', /Simulación Hyrox/i.test(await T(A, '#d-sess')) && /Fuerza: 5×5 sentadilla/.test(await T(A, '#d-sess')) && /55/.test(await T(A, '#d-sess')));
   await A.click('#guide-card [data-done-sess]'); await A.waitForTimeout(300);
-  ok('y con «Hecho» queda apuntada con su nombre', (await local(A)).days[t0].acts[0].title === 'Simulación Hyrox' && (await local(A)).days[t0].acts[0].type === 'hibrido');
+  ok('al registrarla salen las partes de la pizarra', /WOD: 4 rondas de 800 m \+ 20 wall balls/.test(await T(A, '#wod-body')));
+  await A.click('[data-wz-full="0"]'); await A.waitForTimeout(150);
+  ok('«Lo cambié» deja corregir cada parte y desmarcar lo que no hizo', (await A.locator('#wod-body [data-wz-t]').count()) === 3 && (await A.locator('#wod-body [data-wz-ok]:checked').count()) === 3);
+  await A.fill('#wod-body [data-wz-t="2"]', 'WOD: 3 rondas de 800 m + 20 wall balls'); await A.uncheck('#wod-body [data-wz-ok="0"]'); await A.click('[data-wz-next="time"]'); await A.waitForTimeout(150);
+  await A.fill('#wz-min', '50'); await A.fill('#wz-res', '21:30'); await A.click('[data-wz-next="with"]'); await A.waitForTimeout(150); await A.click('[data-wz-with="solo"]'); await A.waitForTimeout(100); await A.click('[data-wz-save]'); await A.waitForTimeout(300);
+  let ac = (await local(A)).days[t0].acts[0];
+  ok('queda apuntada como adaptada, con lo que cambió, su tiempo y su resultado', ac.title === 'Simulación Hyrox' && ac.type === 'hibrido' && ac.full === false && ac.min === 50 && ac.res === '21:30' && !ac.with && ac.parts[0].ok === false && ac.parts[2].t === 'WOD: 3 rondas de 800 m + 20 wall balls' && /adaptado · resultado 21:30/.test(await T(A, '#d-sess')), JSON.stringify(ac));
   // asistente: planifica mañana y se puede deshacer
   await ai('text=' + encodeURIComponent(JSON.stringify({ reply: 'Hecho, Tania: mañana rodaje suave de 40 minutos. ¿Cómo vas de piernas?', actions: [{ type: 'plan', sport: 'carrera', min: 40, title: 'Rodaje suave', date: tomorrow }] })));
   await A.click('.aibar'); await A.waitForTimeout(250);
@@ -102,5 +114,16 @@ try {
   await settle(A, 3600); const B2 = await mk(); await B2.goto(base + '/'); await B2.waitForTimeout(400); await B2.click('#cloud-card [data-cl="login"], [data-cl="login"]'); await B2.waitForTimeout(200); await B2.fill('#cl-email', 'tania@ejemplo.com'); await B2.fill('#cl-pass', 'clave-de-tania-1'); await B2.click('#cl-go'); await closed(B2); await settle(B2);
   const L2 = await local(B2);
   ok('en otro dispositivo llega el día (sesión y entreno) pero no «cómo estás»: es dato de salud', !!L2.days[t0] && L2.days[t0].acts.length === 1 && L2.days[t0].session.src === 'foto' && L2.days[t0].feel === undefined && (await local(A)).days[t0].feel === 'pain', JSON.stringify(L2.days[t0]));
+  // foto directa desde «Registrar entreno»: cámara o galería → pasos
+  await A.click('#train-card [data-sheet="act"]'); await A.waitForTimeout(250);
+  ok('«Registrar entreno» ofrece hacer una foto con la cámara o elegirla', await A.locator('#sh-act .wz-file[capture="environment"]').count() === 1 && await A.isVisible('#sh-act .ai-img'));
+  await ai('text=' + encodeURIComponent(JSON.stringify({ tipo: 'crossfit', min: 60, titulo: 'Murph light', partes: ['1 km carrera', '50 dominadas', '100 flexiones', '1 km carrera'], explica: 'Ve por partes.' })));
+  await A.setInputFiles('#sh-act .wz-file[capture="environment"]', png); await A.waitForFunction(() => /Paso 1 de 3/.test((document.querySelector('#wod-body') || {}).textContent || ''), null, { timeout: 30000 });
+  ok('la foto se lee y sigue con los pasos', /Murph light/.test(await T(A, '#sh-wod')) && /50 dominadas/.test(await T(A, '#wod-body')));
+  await A.click('[data-wz-full="1"]'); await A.click('[data-wz-next="with"]'); await A.click('[data-wz-with="solo"]'); await A.click('[data-wz-save]'); await A.waitForTimeout(300);
+  ac = (await local(A)).days[t0].acts.at(-1); ok('…y se guarda como un entreno completo de la foto', ac.title === 'Murph light' && ac.full === true && ac.src === 'foto' && ac.min === 60 && /de la foto · completo/.test(await T(A, '#d-sess')), JSON.stringify(ac));
+  // a mano: también solo o en pareja
+  await A.click('#train-card [data-sheet="act"]'); await A.waitForTimeout(250); await A.selectOption('#a-type', 'carrera'); await A.fill('#a-min', '30'); await A.fill('#a-km', '5'); await A.selectOption('#a-with', 'pareja'); await A.fill('#a-mate', 'Tania'); await A.click('#act-form button[type=submit]'); await A.waitForTimeout(300);
+  ac = (await local(A)).days[t0].acts.at(-1); ok('el formulario a mano también guarda si fue en pareja', ac.type === 'carrera' && ac.with === 'pareja' && ac.mate === 'Tania');
 } catch (e) { console.log('ERROR ' + e.message.split('\n').slice(0, 3).join(' | ')); fails++; } finally { await b.close(); srv.kill(); }
 console.log(errs.length ? [...new Set(errs)].join('\n') : 'sin errores de script'); console.log(fails ? '\n' + fails + ' fallos' : '\ntodo bien'); process.exit(fails ? 1 : 0);

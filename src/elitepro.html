@@ -210,6 +210,9 @@ dl.kv .over dd{color:var(--crit)}
 .gsteps{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
 .gdays{display:flex;gap:6px;flex-wrap:wrap}.gdays .btn{min-width:44px}
 .linkchip{cursor:pointer;font-family:inherit}
+.wzh{font-family:var(--f-display);font-weight:700;font-size:1.35rem;line-height:1.15}
+.wzpart{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:start}.wzpart input{width:20px;height:20px;margin-top:10px;accent-color:var(--mark)}
+#wod-body .fld textarea,.wzpart textarea{width:100%;font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;resize:vertical}
 .popts{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
 .popts li{display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .popts li>div{display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -725,6 +728,10 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
 
 <dialog class="sheet" id="sh-act" aria-labelledby="sh-act-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-act-t">Registrar entreno</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="choices ai-img" hidden>
+    <span class="choice fileb main">Hacer una foto<small class="hint">Pizarra o entreno: lo leo y lo apunto</small><input class="wz-file" type="file" accept="image/*" capture="environment" aria-label="Hacer una foto del entreno"></span>
+    <span class="choice fileb">Elegir una foto<small class="hint">De la galería o una captura</small><input class="wz-file" type="file" accept="image/*" aria-label="Elegir una foto del entreno"></span>
+  </div>
   <div class="choices">
     <span class="choice fileb"><span>Importar del reloj</span><small class="hint">Garmin, Polar, Coros, Strava</small><input id="a-gpx" type="file" aria-label="Archivo de la actividad: FIT, TCX, GPX o el ZIP de Garmin Connect"></span>
     <span class="choice fileb">Leer captura de Strava<input id="a-shot" type="file" accept="image/*" aria-label="Captura de Strava"></span>
@@ -740,6 +747,7 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
       <label class="fld">Pulso medio (ppm)<input id="a-hr" type="text" inputmode="numeric" placeholder="148"></label>
       <label class="fld">Kcal del reloj<input id="a-kcal" type="text" inputmode="decimal" placeholder="si las da"></label>
     </div>
+    <div class="row"><label class="fld">Con quién<select id="a-with"><option value="">Solo</option><option value="pareja">En pareja</option></select></label><label class="fld wide" id="a-mate-f" hidden>¿Con quién?<input id="a-mate" type="text" maxlength="40" placeholder="Nombre de tu pareja"></label></div>
     <div class="row actions"><button class="btn" type="submit">Guardar entreno</button></div>
     <p id="a-msg" class="msg" aria-live="polite"></p>
   </form>
@@ -774,6 +782,10 @@ dialog.sheet::backdrop{background:rgba(4,6,8,.62)}
 <dialog class="sheet" id="sh-start" aria-labelledby="sh-start-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-start-t">¿Cómo entrenas?</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
   <div id="start-body" class="col" style="gap:14px"></div>
+</div></dialog>
+<dialog class="sheet" id="sh-wod" aria-labelledby="sh-wod-t"><div class="sheet-in">
+  <div class="sheet-head"><h2 id="sh-wod-t">Registrar entreno</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div id="wod-body" class="col" style="gap:12px"></div>
 </div></dialog>
 <dialog class="sheet" id="sh-sess" aria-labelledby="sh-sess-t"><div class="sheet-in">
   <div class="sheet-head"><h2 id="sh-sess-t">La sesión</h2><button class="icon-btn" type="button" data-close aria-label="Cerrar">×</button></div>
@@ -1321,11 +1333,12 @@ function rHoy() {
         <span><b>${esc((TYPES[a.type] || {}).n || a.type)}</b>${a.title ? " · " + esc(a.title) : ""}</span>
         <span class="num">${nf(actKcal(a, w))} kcal</span>
         <button class="icon-btn" type="button" data-del-act="${esc(a.id)}" aria-label="Borrar entreno">×</button>
-        <small class="num">${[a.km > 0 ? nf(a.km, 2) + " km" : "", a.min > 0 ? nf(a.min) + "′" : "", pace(a), a.hr > 0 ? nf(a.hr) + " ppm" : "", a.src === "strava" ? "de Strava" : a.src === "gpx" ? "de GPX" : a.src === "reloj" ? "del reloj" : a.src === "ia" ? "apuntado por el asistente" : a.src === "plan" ? "según lo previsto" : ""].filter(Boolean).join(" · ")}</small>
+        <small class="num">${[a.km > 0 ? nf(a.km, 2) + " km" : "", a.min > 0 ? nf(a.min) + "′" : "", pace(a), a.hr > 0 ? nf(a.hr) + " ppm" : "", a.src === "strava" ? "de Strava" : a.src === "gpx" ? "de GPX" : a.src === "reloj" ? "del reloj" : a.src === "ia" ? "apuntado por el asistente" : a.src === "plan" ? "según lo previsto" : a.src === "foto" ? "de la foto" : "", a.full === true ? "completo" : a.full === false ? "adaptado" : "", a.res ? "resultado " + esc(a.res) : "", a.with === "pareja" ? "en pareja" + (a.mate ? " con " + esc(a.mate) : "") : ""].filter(Boolean).join(" · ")}</small>
+        ${(a.parts || []).length || a.note ? `<details class="how" style="grid-column:1/-1"><summary>Lo que hiciste</summary><ul class="pnotes" style="padding-top:6px">${(a.parts || []).map(x => `<li${x.ok ? "" : ' style="text-decoration:line-through;opacity:.7"'}>${esc(x.t)}</li>`).join("")}${a.note ? `<li>${esc(a.note)}</li>` : ""}</ul></details>` : ""}
       </li>`).join("")}</ul>` : ""}
     <div class="row actions">
       ${sinfo && !sinfo.box ? `<button class="btn" type="button" data-sess="${d}">Ver la sesión</button>` : ""}
-      ${!acts.length && !s.unset && s.type !== "descanso" && d <= today() ? `<button class="btn${sinfo && !sinfo.box ? " ghost" : ""}" type="button" data-done-sess="${d}">Hecho tal cual</button>` : ""}
+      ${!acts.length && !s.unset && s.type !== "descanso" && d <= today() ? `<button class="btn${sinfo && !sinfo.box ? " ghost" : ""}" type="button" data-done-sess="${d}">Lo he hecho</button>` : ""}
       ${sample && canImg && !s.g && !acts.length && isToday ? `<span class="btn ghost fileb">Foto de la pizarra<input class="wod-file" type="file" accept="image/*" aria-label="Foto de la pizarra o del entreno de hoy"></span>` : ""}
       <button class="btn${(sinfo && !sinfo.box) || (!acts.length && !s.unset && s.type !== "descanso" && d <= today()) ? " ghost" : ""}" type="button" data-sheet="act">Registrar entreno</button>
       <button class="btn ghost" type="button" data-gpx="1">Importar del reloj</button>
@@ -2282,7 +2295,7 @@ function rAi() {
 }
 function aiContext() {
   const p = S.profile, d = today(), now = new Date(), t = goal(d), pk = planKind(d), si = sessInfo(d), tot = totals(d), day = S.days[d] || {}, s = planned(d), slotN = k => (SLOTS.find(x => x[0] === k) || [])[1] || k;
-  const actTxt = a => ((TYPES[a.type] || {}).n || a.type) + (a.min ? " " + Math.round(a.min) + " min" : "") + (a.km ? " " + nf(a.km, 1) + " km" : "");
+  const actTxt = a => ((TYPES[a.type] || {}).n || a.type) + (a.title ? " «" + a.title + "»" : "") + (a.min ? " " + Math.round(a.min) + " min" : "") + (a.km ? " " + nf(a.km, 1) + " km" : "") + (a.full === true ? ", completo" : a.full === false ? ", adaptado" + ((a.parts || []).length ? " (" + a.parts.map(x => (x.ok ? "" : "no hecho: ") + x.t).join("; ") + ")" : "") + (a.note ? " (" + a.note + ")" : "") : "") + (a.res ? ", resultado " + a.res : "") + (a.with === "pareja" ? ", en pareja" : "");
   const past = [1, 2, 3, 4, 5, 6].map(i => { const k = addDays(d, -i), x = S.days[k]; return x && ((x.meals || []).length || (x.acts || []).length) ? `${k}: ${Math.round(totals(k).kcal)} de ${Math.round(goal(k).kcal)} kcal; entrenos: ${(x.acts || []).map(actTxt).join(", ") || "ninguno"}` : ""; }).filter(Boolean);
   const mine = myFoods().slice(-30).map(f => `${f.name}${f.g ? " (" + qtyTxt(f.g, f.u) + ")" : " (1 ración)"}: ${f.kcal} kcal, P ${f.p}, H ${f.c}, G ${f.f}`);
   return `\nHoy es ${d} (${DOW[dow(d)]}) y son las ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}.` +
@@ -2380,11 +2393,14 @@ $("#act-form").addEventListener("submit", e => {
   const min = num($("#a-min").value), km = num($("#a-km").value), kcal = num($("#a-kcal").value), hr = num($("#a-hr").value), msg = $("#a-msg");
   if (!(min > 0) && !(km > 0) && !(kcal > 0)) { msg.textContent = "Pon al menos los minutos o la distancia."; msg.className = "msg err"; return; }
   const d = getDay(S.date);
-  d.acts.push({ id: uidGen(), type: $("#a-type").value, min: min > 0 ? min : 0, km: km > 0 ? km : 0, kcal: kcal > 0 ? Math.round(kcal) : 0, hr: hr >= 40 && hr <= 230 ? Math.round(hr) : 0, title: actDraft.title, src: actDraft.src });
-  ["#a-min", "#a-km", "#a-kcal", "#a-hr"].forEach(i => { $(i).value = ""; }); actDraft = { src: "manual", title: "" };
+  const rec = { id: uidGen(), type: $("#a-type").value, min: min > 0 ? min : 0, km: km > 0 ? km : 0, kcal: kcal > 0 ? Math.round(kcal) : 0, hr: hr >= 40 && hr <= 230 ? Math.round(hr) : 0, title: actDraft.title, src: actDraft.src };
+  if ($("#a-with").value === "pareja") { rec.with = "pareja"; const m = $("#a-mate").value.trim().slice(0, 40); if (m) rec.mate = m; }
+  d.acts.push(rec);
+  ["#a-min", "#a-km", "#a-kcal", "#a-hr", "#a-mate"].forEach(i => { $(i).value = ""; }); $("#a-with").value = ""; $("#a-mate-f").hidden = true; actDraft = { src: "manual", title: "" };
   msg.textContent = ""; msg.className = "msg";
   saveDay(d); closeSheets(); toast("Entreno guardado. He recalculado lo que te toca comer.");
 });
+$("#a-with").addEventListener("change", () => { $("#a-mate-f").hidden = $("#a-with").value !== "pareja"; });
 /* ---------- Archivos del reloj: FIT, TCX y el ZIP de Garmin Connect (el GPX sigue con su lector de siempre) ---------- */
 /* La distancia solo se pide en los deportes que la tienen; en fuerza, crossfit, etc. se esconde */
 function actFields(keep) {
@@ -2657,7 +2673,7 @@ function rGuide() {
   const train = acts.length ? { k: "ent", done: true, label: "Entreno", detail: "hecho: " + acts.map(a => (TYPES[a.type] || {}).n || "entreno").join(", ") + ". Buen trabajo.", btn: "" }
     : rest ? { k: "ent", done: true, label: "Descanso", detail: "hoy se recupera. Un paseo de 20–30′ viene bien.", btn: "" }
     : s.unset ? { k: "ent", done: false, label: "Entreno", detail: p.mode === "box" ? "pásame la foto de la pizarra y te digo cómo queda el día" : "aún no has elegido qué haces hoy", btn: wod("Foto de la pizarra") + `<button class="btn ghost sm" type="button" data-sheet="plan" data-date="${d}">Elegir entreno</button>` }
-    : { k: "ent", done: false, label: esc(sessName(s)), detail: nf(s.min) + " min" + (info && info.ph ? " · semana " + info.wk + " de tu plan" : ""), btn: (info ? `<button class="btn ghost sm" type="button" data-sess="${d}">Ver la sesión</button>` : wod("Foto de la pizarra")) + `<button class="btn ghost sm" type="button" data-done-sess="${d}">Hecho</button>` };
+    : { k: "ent", done: false, label: esc(sessName(s)), detail: nf(s.min) + " min" + (info && info.ph ? " · semana " + info.wk + " de tu plan" : ""), btn: (info ? `<button class="btn ghost sm" type="button" data-sess="${d}">Ver la sesión</button>` : wod("Foto de la pizarra")) + `<button class="btn ghost sm" type="button" data-done-sess="${d}">Lo he hecho</button>` };
   const steps = [mealStep("des"), train, mealStep("com"), mealStep("cen")];
   const lastW = Object.values(S.days).filter(x => x.weight > 0).map(x => x.date).sort().pop();
   if (!lastW || daysTo(lastW, d) >= 7) steps.push({ k: "peso", done: false, opt: true, label: "Peso", detail: lastW ? "hace más de una semana que no te pesas" : "pésate para afinar tus cálculos", btn: `<button class="btn ghost sm" type="button" data-sheet="peso">Registrar</button>` });
@@ -2707,11 +2723,7 @@ document.addEventListener("click", e => {
   if (ds.feel !== undefined) { const d = getDay(today()); if (ds.feel) d.feel = ds.feel; else delete d.feel; return saveDay(d); }
   if (ds.soft) { setSession(ds.soft, { type: "movilidad", min: 30 }); return toast("Hecho: hoy movilidad suave. Mañana más."); }
   if (ds.sess) { if (sessSheet(ds.sess)) openSheet("sess"); return; }
-  if (ds.doneSess) {
-    const s = planned(ds.doneSess); if (s.unset || s.type === "descanso") return; const d = getDay(ds.doneSess);
-    d.acts.push({ id: uidGen(), type: s.type, min: s.min || 0, km: 0, kcal: 0, hr: 0, title: (s.title || "").slice(0, 60), src: "plan" }); closeSheets(); saveDay(d);
-    return toast("Entreno apuntado. ¡Bien hecho! Si tienes los datos del reloj, puedes añadirlos.");
-  }
+  if (ds.doneSess) { const q = planned(ds.doneSess); if (q.unset || q.type === "descanso") return; return wzOpen(ds.doneSess, "plan"); }
   if (ds.guideBack) { const d = getDay(ds.guideBack); delete d.session; closeSheets(); return saveDay(d); }
   if (ds.goto) { setTimeout(() => { const el = document.getElementById(ds.goto); if (el) { el.hidden = false; el.scrollIntoView({ block: "center" }); } }, 300); return; }
   if (ds.st) { const [k, v] = ds.st.split(":"); stDraft[k] = k === "kind" ? v : Number(v); return startSheet($("#start-body").dataset.step); }
@@ -2731,19 +2743,100 @@ document.addEventListener("change", async e => {
   const f = inp.files && inp.files[0]; inp.value = ""; if (!f || !sample || !S.profile) return;
   const date = S.date, say = (t, err) => { const m = $("#g-msg") || $("#w-msg"); if (m) { m.textContent = t; m.className = "msg" + (err ? " err" : ""); } else if (t) toast(t); };
   say("Leyendo la pizarra…");
-  const prompt = `La imagen es la pizarra de un box, o la programación del día de un entrenador, con el entrenamiento de hoy (crossfit, híbrido, Hyrox, funcional o parecido). Léela y resúmela para alguien que va a hacerla.` +
-    `\nResponde solo con un objeto JSON, sin más texto: {"tipo": uno de ${JSON.stringify(Object.keys(TYPES).filter(k => k !== "descanso" && k !== "competicion"))}, "min": duración total estimada de la sesión en minutos, contando calentamiento y partes, "titulo": "nombre corto de la sesión", "partes": ["Calentamiento: …", "Fuerza: …", "WOD: …"], "explica": "una o dos frases: qué se trabaja y un consejo para regular el esfuerzo"}.` +
-    `\n"partes": como mucho 6, cada una en una línea corta y tal como viene escrita (no inventes ejercicios ni pesos). Si la duración no viene, estímala (una clase suele durar 60 minutos).` +
-    `\nSi la imagen no es un entrenamiento, responde {"error": "motivo breve"}.`;
   try {
-    const r = await sample.json(prompt, { images: f, max: 900 });
-    if (!r || r.error || !TYPES[r.tipo]) return say((r && r.error) ? String(r.error).slice(0, 160) : "No he visto un entrenamiento en esa foto.", true);
-    const d = getDay(date), min = Math.min(Math.max(Math.round(Number(r.min) || 60), 10), 240);
-    d.session = { type: r.tipo, min, title: String(r.titulo || "").slice(0, 60), note: (Array.isArray(r.partes) ? r.partes : []).slice(0, 6).map(x => String(x).replace(/\s+/g, " ").slice(0, 160)).filter(Boolean).join("\n"), tip: String(r.explica || "").slice(0, 300), src: "foto" };
-    saveDay(d); toast("Pizarra leída: " + (d.session.title || TYPES[r.tipo].n) + ", " + min + "′. Ya tienes el día ajustado.");
-  } catch (err) { const c = err && err.code; if (AIOFF.includes(c)) { sample = null; canImg = false; showAi(); render(); } say(AIOFF.includes(c) ? "La ayuda de IA no está disponible ahora. Elige el entreno a mano." : AIERR[c] || "Ha fallado la conexión. Inténtalo otra vez.", true); }
+    const d = getDay(date); d.session = await readWod(f); saveDay(d); toast("Pizarra leída: " + (d.session.title || TYPES[d.session.type].n) + ", " + d.session.min + "′. Ya tienes el día ajustado.");
+  } catch (err) { const c = err && err.code; if (AIOFF.includes(c)) { sample = null; canImg = false; showAi(); render(); } say(c === "wod" ? err.why : AIOFF.includes(c) ? "La ayuda de IA no está disponible ahora. Elige el entreno a mano." : AIERR[c] || "Ha fallado la conexión. Inténtalo otra vez.", true); }
 });
 
+/* ---------- Registrar un entreno: foto (o cámara) → ¿completo? → tiempo → solo o en pareja ---------- */
+let wz = null;
+/* Lee la foto de la pizarra o del entreno con la IA y devuelve la sesión (tipo, minutos, título, partes y un consejo) */
+async function readWod(file) {
+  const prompt = `La imagen es la pizarra de un box, la programación de un entrenador o la foto o captura de un entrenamiento (crossfit, híbrido, Hyrox, funcional, fuerza o parecido). Léela y resúmela para alguien que la va a hacer o la acaba de hacer.` +
+    `\nResponde solo con un objeto JSON, sin más texto: {"tipo": uno de ${JSON.stringify(Object.keys(TYPES).filter(k => k !== "descanso" && k !== "competicion"))}, "min": duración total estimada de la sesión en minutos, contando calentamiento y partes, "titulo": "nombre corto de la sesión", "partes": ["Calentamiento: …", "Fuerza: …", "WOD: …"], "explica": "una o dos frases: qué se trabaja y un consejo para regular el esfuerzo"}.` +
+    `\n"partes": como mucho 6, cada una en una línea corta y tal como viene escrita, con sus rondas, repeticiones y pesos (no inventes ejercicios ni pesos). Si la duración no viene, estímala (una clase suele durar 60 minutos).` +
+    `\nSi la imagen no es un entrenamiento, responde {"error": "motivo breve"}.`;
+  const r = await sample.json(prompt, { images: file, max: 900 });
+  if (!r || r.error || !TYPES[r.tipo]) throw Object.assign(new Error("wod"), { code: "wod", why: r && r.error ? String(r.error).slice(0, 160) : "No he visto un entrenamiento en esa foto." });
+  return { type: r.tipo, min: Math.min(Math.max(Math.round(Number(r.min) || 60), 10), 240), title: String(r.titulo || "").slice(0, 60), note: (Array.isArray(r.partes) ? r.partes : []).slice(0, 6).map(x => String(x).replace(/\s+/g, " ").slice(0, 160)).filter(Boolean).join("\n"), tip: String(r.explica || "").slice(0, 300), src: "foto" };
+}
+/* El borrador del registro a partir de lo previsto para ese día (la sesión de la guía o la leída de la pizarra) */
+function wzFrom(date, src) {
+  const s = planned(date), si = sessInfo(date);
+  return { date, step: "full", type: s.type, min: s.min || 60, title: s.title || "", parts: (si ? si.main : []).map(t => ({ t, o: t, ok: true })), full: true, edit: false, note: "", res: "", with: "", mate: "", src };
+}
+const wzOpen = (date, src) => { wz = date ? wzFrom(date, src || "plan") : null; wzRender(); openSheet("wod"); };
+function wzRender() {
+  const b = $("#wod-body"); if (!b || !S.profile) return;
+  const say = `<p id="wz-msg" class="msg" aria-live="polite"></p>`, step = (n, t) => `<p class="eyebrow">Paso ${n} de 3</p><h3 class="wzh">${t}</h3>`;
+  if (!wz) {
+    const d = S.date, s = planned(d), done = ((S.days[d] || {}).acts || []).length > 0, ai = sample && canImg;
+    $("#sh-wod-t").textContent = "Registrar entreno";
+    b.innerHTML = `<p class="sub">Sube la foto de la pizarra o de tu entreno y lo apunto por ti. Luego me dices si lo hiciste completo, cuánto tardaste y con quién.</p>
+      <div class="choices">${!s.unset && s.type !== "descanso" && !done ? `<button class="choice main" type="button" data-wz-plan="${d}">El de hoy: ${esc(sessName(s))}<small class="hint">${nf(s.min)} min · lo que tenías previsto</small></button>` : ""}
+      ${ai ? `<span class="choice fileb">Hacer una foto<small class="hint">Abre la cámara</small><input class="wz-file" type="file" accept="image/*" capture="environment" aria-label="Hacer una foto del entreno"></span><span class="choice fileb">Elegir una foto<small class="hint">De la galería o una captura</small><input class="wz-file" type="file" accept="image/*" aria-label="Elegir una foto del entreno"></span>` : ""}
+      <button class="choice" type="button" data-wz-manual="1">Apuntarlo a mano<small class="hint">Minutos, distancia, reloj o Strava</small></button></div>
+      ${ai ? "" : `<p class="sub">Para leer la foto del entreno hace falta la IA: entra en tu cuenta de la nube (Perfil → Cuenta en la nube).</p>`}${say}`;
+    return;
+  }
+  const name = esc(wz.title || (TYPES[wz.type] || {}).n || "Entreno");
+  $("#sh-wod-t").textContent = wz.title || (TYPES[wz.type] || {}).n || "Registrar entreno";
+  if (wz.step === "full") {
+    b.innerHTML = step(1, "¿Lo hiciste completo?") + (wz.parts.length ? (wz.edit
+      ? `<p class="sub">Corrige lo que cambiaste (rondas, repeticiones, pesos) y desmarca lo que no hiciste.</p><div class="col" style="gap:8px">${wz.parts.map((p, i) => `<div class="wzpart"><input type="checkbox" data-wz-ok="${i}" ${p.ok ? "checked" : ""} aria-label="Hecho"><textarea data-wz-t="${i}" rows="2" maxlength="200" aria-label="Parte ${i + 1}">${esc(p.t)}</textarea></div>`).join("")}</div>`
+      : `<ul class="pnotes">${wz.parts.map(p => `<li>${esc(p.t)}</li>`).join("")}</ul>`)
+      : `<p class="sub">${name} · ${nf(wz.min)} min</p>${wz.edit ? `<label class="fld">¿Qué cambiaste?<textarea id="wz-note" rows="2" maxlength="200" placeholder="Hice 3 rondas en vez de 4">${esc(wz.note)}</textarea></label>` : ""}`) +
+      `<div class="row actions">${wz.edit ? `<button class="btn" type="button" data-wz-next="time">Siguiente</button>` : `<button class="btn" type="button" data-wz-full="1">Sí, completo</button><button class="btn ghost" type="button" data-wz-full="0">Lo cambié</button>`}</div>${say}`;
+  } else if (wz.step === "time") {
+    b.innerHTML = step(2, "¿Cuánto tardaste?") + `<div class="row"><label class="fld">Duración total (min)<input id="wz-min" type="text" inputmode="decimal" value="${wz.min ? String(wz.min).replace(".", ",") : ""}"></label><label class="fld wide">Tiempo o resultado del WOD (opcional)<input id="wz-res" type="text" maxlength="40" value="${esc(wz.res)}" placeholder="18:42 o 5 rondas + 12"></label></div>
+      <div class="row actions"><button class="btn" type="button" data-wz-next="with">Siguiente</button><button class="btn ghost" type="button" data-wz-next="full">Atrás</button></div>${say}`;
+  } else {
+    b.innerHTML = step(3, "¿Solo o en pareja?") + `<div class="choices"><button class="choice${wz.with === "solo" ? " main" : ""}" type="button" data-wz-with="solo">Solo</button><button class="choice${wz.with === "pareja" ? " main" : ""}" type="button" data-wz-with="pareja">En pareja</button></div>
+      ${wz.with === "pareja" ? `<label class="fld">¿Con quién?<input id="wz-mate" type="text" maxlength="40" value="${esc(wz.mate)}" placeholder="Nombre de tu pareja"></label><p class="sub">Muy pronto podrás invitarla desde aquí si tiene cuenta en Elitepro.</p>` : ""}
+      <div class="row actions"><button class="btn" type="button" data-wz-save="1" ${wz.with ? "" : "disabled"}>Guardar entreno</button><button class="btn ghost" type="button" data-wz-next="time">Atrás</button></div>${say}`;
+  }
+}
+/* lo escrito en el paso se guarda en el borrador antes de cambiar de paso */
+function wzKeep() {
+  if (!wz) return;
+  document.querySelectorAll("#wod-body [data-wz-t]").forEach(el => { wz.parts[+el.dataset.wzT].t = el.value.replace(/\s+/g, " ").trim().slice(0, 200); });
+  document.querySelectorAll("#wod-body [data-wz-ok]").forEach(el => { wz.parts[+el.dataset.wzOk].ok = el.checked; });
+  const g = id => $("#wod-body #" + id); if (g("wz-note")) wz.note = g("wz-note").value.trim().slice(0, 200);
+  if (g("wz-min")) { const m = num(g("wz-min").value); wz.min = m > 0 ? Math.min(m, 1440) : 0; } if (g("wz-res")) wz.res = g("wz-res").value.trim().slice(0, 40); if (g("wz-mate")) wz.mate = g("wz-mate").value.trim().slice(0, 40);
+}
+document.addEventListener("click", e => {
+  const x = e.target.closest("[data-wz-plan],[data-wz-manual],[data-wz-full],[data-wz-next],[data-wz-with],[data-wz-save]"); if (!x || !S.profile) return;
+  const ds = x.dataset, msg = t => { const m = $("#wz-msg"); if (m) { m.textContent = t; m.className = "msg err"; } };
+  if (ds.wzPlan) { wz = wzFrom(ds.wzPlan, "plan"); return wzRender(); }
+  if (ds.wzManual) { openSheet("act"); actFields(true); return; }
+  wzKeep(); if (!wz) return;
+  if (ds.wzFull) { if (ds.wzFull === "1") { wz.full = true; wz.edit = false; wz.parts.forEach(p => { p.t = p.o; p.ok = true; }); wz.step = "time"; } else { wz.full = false; wz.edit = true; } return wzRender(); }
+  if (ds.wzNext) { if (ds.wzNext === "with" && !(wz.min > 0)) return msg("Pon los minutos que duró."); wz.step = ds.wzNext; return wzRender(); }
+  if (ds.wzWith) { wz.with = ds.wzWith; return wzRender(); }
+  if (ds.wzSave) {
+    if (!wz.with) return msg("Dime si fue solo o en pareja.");
+    const edited = wz.parts.some(p => !p.ok || p.t !== p.o), d = getDay(wz.date), a = { id: uidGen(), type: wz.type, min: wz.min, km: 0, kcal: 0, hr: 0, title: (wz.title || "").slice(0, 60), src: wz.src, full: wz.full && !edited && !wz.note };
+    if (wz.parts.length) a.parts = wz.parts.map(p => ({ t: p.t, ok: p.ok })); if (wz.note) a.note = wz.note; if (wz.res) a.res = wz.res;
+    if (wz.with === "pareja") { a.with = "pareja"; if (wz.mate) a.mate = wz.mate; }
+    d.acts.push(a); wz = null; closeSheets(); saveDay(d);
+    return toast(a.full ? "¡Entreno completo guardado! Buen trabajo." : "Entreno guardado. Cada sesión suma, aunque la adaptes.");
+  }
+});
+/* foto del entreno desde el registro: la IA la lee, queda como sesión del día y se sigue con los pasos */
+document.addEventListener("change", async e => {
+  const inp = e.target; if (!inp.classList || !inp.classList.contains("wz-file")) return;
+  const f = inp.files && inp.files[0]; inp.value = ""; if (!f || !sample || !S.profile) return;
+  const date = S.date; if (!$("#sh-wod").open) { wz = null; wzRender(); openSheet("wod"); }
+  const say = (t, err) => { const m = $("#wz-msg"); if (m) { m.textContent = t; m.className = "msg" + (err ? " err" : ""); } };
+  say("Leyendo la foto del entreno…"); document.querySelectorAll("#wod-body .wz-file").forEach(i => { i.disabled = true; });
+  try {
+    const ses = await readWod(f), d = getDay(date); d.session = ses; saveDay(d);
+    wz = wzFrom(date, "foto"); wzRender(); openSheet("wod");
+  } catch (err) {
+    const c = err && err.code; if (AIOFF.includes(c)) { sample = null; canImg = false; showAi(); render(); }
+    wz = null; wzRender(); say(c === "wod" ? err.why : AIOFF.includes(c) ? "La ayuda de IA no está disponible ahora. Apúntalo a mano." : AIERR[c] || "Ha fallado la conexión. Inténtalo otra vez.", true);
+  }
+});
 /* ---------- Hojas: los formularios aparecen solo al pedirlos ---------- */
 function openSheet(n) {
   const d = $("#sh-" + n); if (!d) return;
@@ -2807,6 +2900,7 @@ document.addEventListener("click", e => {
     if (n === "rem") { $("#rem-form").reset(); $("#r-title").value = REMK.comida[1]; $("#r-msg").textContent = ""; remNote(); }
     if (n === "plan") planSheet(t.dataset.date || S.date);
     if (n === "start") startSheet("");
+    if (n === "wod") { wz = null; wzRender(); }
     if (n === "ai") { if (!sample) return; rAi(); }
     if (n === "act") { $("#a-msg").textContent = ""; $("#a-msg").className = "msg"; if (!["#a-min", "#a-km", "#a-kcal", "#a-hr"].some(i => $(i).value)) $("#a-type").value = plannedOr($("#a-type").value); actFields(true); }
     openSheet(n);
